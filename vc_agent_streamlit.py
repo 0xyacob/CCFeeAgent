@@ -2072,7 +2072,7 @@ if __name__ == "__main__":
     elif current_interface == 'chat':
         main()  # Use existing chat interface
     elif current_interface == 'analytics':
-        render_fee_letter_dashboard()  # Use existing dashboard
+        render_specialized_fee_generation()  # Use updated interface with refresh button
     elif current_interface == 'research':
         render_research_interface()
     elif current_interface == 'settings':
