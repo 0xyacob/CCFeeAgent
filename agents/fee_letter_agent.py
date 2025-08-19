@@ -392,8 +392,21 @@ class FeeLetterAgent(BaseAgent):
             from microsoft_graph_mail import MicrosoftGraphMailService
             mail_service = MicrosoftGraphMailService(send_mode=self.email_mode)
             
-            # Convert plain text body to HTML for better formatting
-            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
+            # Convert text body to HTML with proper formatting
+            # Replace line breaks with HTML breaks and preserve HTML tags
+            import html
+            # Don't escape HTML if it already contains HTML tags
+            if '<' in body and '>' in body:
+                # Assume it's already HTML formatted, just convert line breaks
+                html_body = body.replace('\n', '<br>\n')
+            else:
+                # Plain text - escape HTML and convert line breaks
+                html_body = html.escape(body).replace('\n', '<br>\n')
+            
+            # Wrap in a div with proper styling
+            html_body = f"""<div style='font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333;'>
+{html_body}
+</div>"""
             
             # Send via Microsoft Graph
             success = mail_service.send_or_draft(
@@ -426,8 +439,21 @@ class FeeLetterAgent(BaseAgent):
             # Parse primary recipients
             to_list = [addr.strip() for addr in to_addresses.split(';') if addr.strip()]
             
-            # Convert plain text body to HTML for better formatting
-            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
+            # Convert text body to HTML with proper formatting
+            # Replace line breaks with HTML breaks and preserve HTML tags
+            import html
+            # Don't escape HTML if it already contains HTML tags
+            if '<' in body and '>' in body:
+                # Assume it's already HTML formatted, just convert line breaks
+                html_body = body.replace('\n', '<br>\n')
+            else:
+                # Plain text - escape HTML and convert line breaks
+                html_body = html.escape(body).replace('\n', '<br>\n')
+            
+            # Wrap in a div with proper styling
+            html_body = f"""<div style='font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333;'>
+{html_body}
+</div>"""
             
             # Add CC information to the body
             html_body = f"<p><strong>CC:</strong> {cc_address}</p><hr/>{html_body}"
