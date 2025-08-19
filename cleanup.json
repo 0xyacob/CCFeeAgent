@@ -1,0 +1,38 @@
+{
+  "version": "3.7.0",
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🧹 Cleaning up corrupted installation files...\n🗑️ Removing invalid pip install artifacts"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo 'Removing corrupted files:' && ls -la | grep '^-.*=.*' && rm -f =* || echo 'No corrupted files found'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo 'Cleaning Python cache:' && find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo 'Current directory contents:' && ls -la | head -15"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "✅ Cleanup completed! Now try reinstalling or starting the application."
+      }
+    }
+  ]
+}

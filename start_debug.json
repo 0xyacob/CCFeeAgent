@@ -25,14 +25,14 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '=== DEPENDENCY CHECK ===' && python -c 'import sys; print(f\"Python path: {sys.path[:3]}\")' && echo 'Testing imports:' && python -c 'import streamlit; print(f\"✅ Streamlit {streamlit.__version__}\")' || echo '❌ Streamlit failed'"
+        "message": "echo '=== DEPENDENCY CHECK ===' && python -c \"import sys; print('Python path:', str(sys.path[:3]))\" && echo 'Testing imports:' && python -c \"import streamlit; print('✅ Streamlit', streamlit.__version__)\" || echo '❌ Streamlit failed'"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '=== PANDAS TEST ===' && python -c 'import pandas; print(f\"✅ Pandas {pandas.__version__}\")' || echo '❌ Pandas failed'"
+        "message": "echo '=== PANDAS TEST ===' && python -c \"import pandas; print('✅ Pandas', pandas.__version__)\" || echo '❌ Pandas failed'"
       }
     },
     {

@@ -56,6 +56,10 @@ module.exports = {
         text: "Update Dependencies",
         href: "update.json"
       }, {
+        icon: "fa-solid fa-broom",
+        text: "Clean Up Files",
+        href: "cleanup.json"
+      }, {
         icon: "fa-solid fa-plug",
         text: "Reinstall",
         href: "install.json"
