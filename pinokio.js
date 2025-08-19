@@ -1,5 +1,5 @@
 module.exports = {
-  version: "4.0",
+  version: "3.7.0",
   title: "CC Fee Letter Agent",
   description: "Professional fee letter generation and email automation for CC Growth EIS Fund",
   icon: "icon.png",
