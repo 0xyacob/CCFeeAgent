@@ -351,16 +351,37 @@ class ExcelLocalThreeSheet:
         name_col = getattr(self, "_co_company_name_col", None)
         if not name_col or name_col not in self.cos.columns:
             return None
+        
+        # Clean up the query
         s = str(company_query or "").strip().lower()
-        # direct exact match
-        m = self.cos[self.cos[name_col].astype(str).str.strip().str.lower() == s]
+        if not s:
+            return None
+            
+        print(f"🔍 Searching for company: '{company_query}' (normalized: '{s}')")
+        
+        # Step 1: Direct exact match (case-insensitive)
+        company_names = self.cos[name_col].astype(str).str.strip()
+        m = self.cos[company_names.str.lower() == s]
         if not m.empty:
+            print(f"✅ Found exact match: {company_names.iloc[m.index[0]]}")
             return m.iloc[0].to_dict()
-        # contains
-        m = self.cos[self.cos[name_col].astype(str).str.lower().str.contains(s, na=False)]
+        
+        # Step 2: Contains match (case-insensitive) - this should catch "pingus" in "Pingus Ltd"
+        m = self.cos[company_names.str.lower().str.contains(s, na=False, regex=False)]
         if not m.empty:
+            match_name = company_names.iloc[m.index[0]]
+            print(f"✅ Found contains match: '{s}' in '{match_name}'")
             return m.iloc[0].to_dict()
-        # normalized comparison (remove legal suffixes)
+        
+        # Step 3: Reverse contains - check if company name is contained in query
+        # This helps with cases like searching "Pingus Limited Company" for "Pingus Ltd"
+        for idx, company_name in enumerate(company_names):
+            company_lower = str(company_name).lower().strip()
+            if company_lower and company_lower in s:
+                print(f"✅ Found reverse contains match: '{company_lower}' in '{s}'")
+                return self.cos.iloc[idx].to_dict()
+        
+        # Step 4: Normalized comparison (remove legal suffixes)
         def _norm(n: str) -> str:
             x = str(n or "").lower().strip()
             for suf in [" limited", " ltd.", " ltd", " plc", " llp", " inc.", " inc", " corp.", " corp", " co.", " company"]:
@@ -369,28 +390,43 @@ class ExcelLocalThreeSheet:
                     break
             x = " ".join(x.split())
             return x
+        
         s_norm = _norm(company_query)
-        self.cos["__norm__"] = self.cos[name_col].astype(str).map(_norm)
-        m = self.cos[self.cos["__norm__"] == s_norm]
-        if not m.empty:
-            return m.iloc[0].to_dict()
-        # compressed (remove spaces/punct)
+        print(f"🔍 Trying normalized search: '{s_norm}'")
+        
+        for idx, company_name in enumerate(company_names):
+            company_norm = _norm(str(company_name))
+            if company_norm == s_norm:
+                print(f"✅ Found normalized match: '{s_norm}' matches '{company_norm}' for '{company_name}'")
+                return self.cos.iloc[idx].to_dict()
+            # Also try contains on normalized names
+            if s_norm and (s_norm in company_norm or company_norm in s_norm):
+                print(f"✅ Found normalized contains match: '{s_norm}' <-> '{company_norm}' for '{company_name}'")
+                return self.cos.iloc[idx].to_dict()
+        
+        # Step 5: Compressed comparison (remove all spaces/punctuation)
         import re
         def _compress(x: str) -> str:
             return re.sub(r"[^a-z0-9]", "", str(x).lower())
+        
         s_comp = _compress(company_query)
-        comp_col = self.cos[name_col].astype(str).map(_compress)
-        m = self.cos[comp_col == s_comp]
-        if not m.empty:
-            return m.iloc[0].to_dict()
-        m = self.cos[comp_col.str.contains(s_comp, na=False)]
-        if not m.empty:
-            return m.iloc[0].to_dict()
-        choices = self.cos[name_col].astype(str).tolist()
+        print(f"🔍 Trying compressed search: '{s_comp}'")
+        
+        for idx, company_name in enumerate(company_names):
+            company_comp = _compress(str(company_name))
+            if s_comp and company_comp and (s_comp == company_comp or s_comp in company_comp or company_comp in s_comp):
+                print(f"✅ Found compressed match: '{s_comp}' <-> '{company_comp}' for '{company_name}'")
+                return self.cos.iloc[idx].to_dict()
+        
+        # Step 6: Fuzzy matching as last resort
+        choices = company_names.tolist()
         hit = self._fuzzy_one(company_query, choices)
         if hit and hit[1] >= 75:
             idx = choices.index(hit[0])
+            print(f"✅ Found fuzzy match: '{company_query}' -> '{hit[0]}' (similarity: {hit[1]}%)")
             return self.cos.iloc[idx].to_dict()
+        
+        print(f"❌ No match found for '{company_query}' in {len(choices)} companies")
         return None
 
     def list_available_companies(self) -> List[str]:
