@@ -12,21 +12,21 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true"
+        "message": "echo '🧹 Clearing Python cache...' && find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "pip install --upgrade streamlit"
+        "message": "echo '📦 Ensuring Streamlit is ready...' && pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests python-dotenv langchain langchain-community"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false",
+        "message": "echo '🚀 Starting Streamlit application...' && python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0",
         "on": [
           {
             "event": "/http:\\/\\/localhost:8505/",
