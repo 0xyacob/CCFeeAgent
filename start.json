@@ -12,7 +12,7 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '🔍 Checking environment...' && python --version && echo 'Python OK' && python -c 'import streamlit; print(f\"Streamlit {streamlit.__version__} ready\")' || echo '⚠️ Streamlit not available'"
+        "message": "echo '🔍 Checking environment...' && python --version && echo 'Python OK' && python -c \"import streamlit; print('Streamlit', streamlit.__version__, 'ready')\" || echo '⚠️ Streamlit not available'"
       }
     },
     {
