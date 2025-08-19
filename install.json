@@ -11,7 +11,7 @@
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv",
+        "message": "pip install streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv langchain langchain-community",
         "venv": "env"
       }
     },
