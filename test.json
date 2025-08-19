@@ -1,0 +1,25 @@
+{
+  "version": "3.7.0",
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🧪 Testing Python and Streamlit in Pinokio environment..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "python --version && echo 'Python working!' && pip list | grep streamlit && echo 'Streamlit found!'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo 'Testing basic Streamlit...' && python -c 'import streamlit as st; print(\"Streamlit import successful!\")'"
+      }
+    }
+  ]
+}
