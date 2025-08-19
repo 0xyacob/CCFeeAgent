@@ -44,6 +44,10 @@ module.exports = {
         text: "Start Simple Version",
         href: "start_simple.json"
       }, {
+        icon: "fa-solid fa-flask",
+        text: "Test Ultra-Simple Startup",
+        href: "start_test.json"
+      }, {
         icon: "fa-solid fa-bug",
         text: "Debug Startup Issues",
         href: "start_debug.json"

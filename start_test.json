@@ -1,0 +1,25 @@
+{
+  "version": "3.7.0",
+  "daemon": true,
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🧪 Testing Ultra-Simple Startup...\n🌐 Opening test app at http://localhost:8509"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "streamlit run simple_app.py --server.port 8509 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0",
+        "on": [
+          {
+            "event": "/http:\\/\\/localhost:8509/",
+            "done": true
+          }
+        ]
+      }
+    }
+  ]
+}
