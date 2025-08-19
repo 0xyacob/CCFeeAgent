@@ -5,28 +5,21 @@
     {
       "method": "log",
       "params": {
-        "text": "🚀 Starting CC Fee Letter Agent...\n📧 Professional fee letter generation and email automation\n🧹 Clearing Python cache for fresh start\n🌐 Opening in browser at http://localhost:8505"
+        "text": "🚀 Starting CC Fee Letter Agent...\n📧 Professional fee letter generation and email automation\n🌐 Opening in browser at http://localhost:8505"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '🧹 Clearing Python cache...' && find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true"
+        "message": "echo '🔍 Checking environment...' && python --version && echo 'Python OK' && python -c 'import streamlit; print(f\"Streamlit {streamlit.__version__} ready\")' || echo '⚠️ Streamlit not available'"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '📦 Ensuring core dependencies are ready...' && pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests python-dotenv"
-      }
-    },
-    {
-      "method": "shell.run",
-      "params": {
-        "venv": "env",
-        "message": "echo '🚀 Starting Streamlit application...' && python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0",
+        "message": "echo '🚀 Starting Streamlit application...' && python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0 --logger.level error",
         "on": [
           {
             "event": "/http:\\/\\/localhost:8505/",

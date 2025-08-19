@@ -1,0 +1,59 @@
+{
+  "version": "3.7.0",
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🔍 CC Fee Letter Agent - Debug Mode\n🧪 Comprehensive environment diagnostics\n📋 This will help identify startup issues"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== ENVIRONMENT DEBUG ===' && echo 'Working Directory:' && pwd && echo 'Python Version:' && python --version && echo 'Python Executable:' && which python"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== FILE CHECK ===' && echo 'Files in directory:' && ls -la | head -20 && echo 'Streamlit app exists:' && ls -la vc_agent_streamlit.py simple_app.py 2>/dev/null || echo 'Some files missing'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== DEPENDENCY CHECK ===' && python -c 'import sys; print(f\"Python path: {sys.path[:3]}\")' && echo 'Testing imports:' && python -c 'import streamlit; print(f\"✅ Streamlit {streamlit.__version__}\")' || echo '❌ Streamlit failed'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== PANDAS TEST ===' && python -c 'import pandas; print(f\"✅ Pandas {pandas.__version__}\")' || echo '❌ Pandas failed'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== NETWORK TEST ===' && echo 'Available ports:' && netstat -an | grep LISTEN | grep -E ':(850[5-9]|8510)' || echo 'No conflicting ports found'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '=== STREAMLIT TEST ===' && echo 'Testing Streamlit startup (5 second timeout):' && timeout 5s python -m streamlit run simple_app.py --server.port 8508 --server.headless true --browser.gatherUsageStats false 2>&1 || echo 'Streamlit test completed (timeout expected)'"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "🎯 Debug complete! Review the output above to identify any issues.\n💡 If all tests pass, try the 'Start Simple Version' option."
+      }
+    }
+  ]
+}
