@@ -19,7 +19,7 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '📦 Ensuring Streamlit is ready...' && pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests python-dotenv langchain langchain-community"
+        "message": "echo '📦 Ensuring core dependencies are ready...' && pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests python-dotenv"
       }
     },
     {

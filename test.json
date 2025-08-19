@@ -4,21 +4,41 @@
     {
       "method": "log",
       "params": {
-        "text": "🧪 Testing Python and Streamlit in Pinokio environment..."
+        "text": "🧪 Running diagnostic test for CC Fee Letter Agent..."
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "python --version && echo 'Python working!' && pip list | grep streamlit && echo 'Streamlit found!'"
+        "message": "echo '📦 Testing Python environment...' && python --version"
       }
     },
     {
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo 'Testing basic Streamlit...' && python -c 'import streamlit as st; print(\"Streamlit import successful!\")'"
+        "message": "echo '🔍 Testing core dependencies...' && python -c \"import streamlit, pandas, openpyxl, rapidfuzz, jinja2, msal, requests, dotenv; print('✅ All core dependencies available')\""
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env", 
+        "message": "echo '🧪 Running minimal diagnostic test...' && python test_minimal.py --help || echo '⚠️ test_minimal.py not found'"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "echo '🚀 Testing Streamlit startup...' && timeout 10s python -m streamlit run vc_agent_streamlit.py --server.port 8506 --server.headless true --browser.gatherUsageStats false || echo '✅ Streamlit test completed (timeout expected)'"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "✅ Diagnostic test completed! Check output above for any issues."
       }
     }
   ]

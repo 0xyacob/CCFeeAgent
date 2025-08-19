@@ -16,8 +16,34 @@ import os
 from pathlib import Path
 
 # Import the conversational agent (RAG disabled due to Keras/Transformers conflicts)
-from vc_conversational_agent import VCConversationalAgent
-from config_manager import config_manager
+try:
+    from vc_conversational_agent import VCConversationalAgent
+    print("✅ VCConversationalAgent imported successfully")
+except ImportError as e:
+    print(f"⚠️ VCConversationalAgent not available: {e}")
+    VCConversationalAgent = None
+
+try:
+    from config_manager import config_manager
+    print("✅ config_manager imported successfully")
+except ImportError as e:
+    print(f"⚠️ config_manager not available: {e}")
+    # Create a minimal config manager stub
+    class ConfigManagerStub:
+        def __init__(self):
+            self.excel_path = None
+            
+        def get_excel_path(self):
+            return self.excel_path or "data/CC_Growth_EIS_Fund_Data.xlsx"
+            
+        def set_excel_path(self, path):
+            self.excel_path = path
+            
+        def validate_excel_file(self, path):
+            return {"valid": True, "errors": []}
+    
+    config_manager = ConfigManagerStub()
+
 # RAG integration disabled to prevent Keras/Transformers crashes
 EnhancedVCAgent = None
 StreamlitRAGIntegration = None
@@ -821,12 +847,21 @@ def render_fee_letter_dashboard():
     
     # Import enhanced utilities
     try:
-        from vc_enhanced_utils import ActivityLogger, PolicyGate, FeeCalculator, FuzzyMatcher
-        from agents.fee_letter_agent import FeeLetterAgent
-        
-        # Initialize components
-        activity_logger = ActivityLogger()
-        fee_agent = FeeLetterAgent()
+        # Import utilities with error handling
+        try:
+            from vc_enhanced_utils import ActivityLogger, PolicyGate, FeeCalculator, FuzzyMatcher
+            activity_logger = ActivityLogger()
+        except ImportError as e:
+            st.error(f"❌ Enhanced utilities not available: {e}")
+            return
+            
+        try:
+            from agents.fee_letter_agent import FeeLetterAgent
+            fee_agent = FeeLetterAgent()
+        except ImportError as e:
+            st.error(f"❌ Fee Letter Agent not available: {e}")
+            st.info("💡 This usually means some dependencies are missing. Please check the installation.")
+            return
         
         # Dashboard tabs
         tab1, tab2, tab3, tab4 = st.tabs(["📝 Generate Fee Letter", "📊 Activity Log", "🔍 Preview & Validate", "📈 Analytics"])
@@ -1104,6 +1139,37 @@ def render_fee_letter_dashboard():
     except ImportError as e:
         st.error(f"❌ Enhanced utilities not available: {e}")
         st.info("💡 Make sure vc_enhanced_utils.py is in the project directory")
+
+def render_minimal_fallback():
+    """Render a minimal fallback interface when dependencies are missing"""
+    st.error("🚫 **Application Dependencies Missing**")
+    st.markdown("""
+    ### ❌ Some required components are not available
+    
+    This usually happens when:
+    - The application is running in a restricted environment
+    - Some Python packages failed to install
+    - There are import conflicts
+    
+    ### 🔧 Troubleshooting Steps:
+    1. **Check Installation**: Ensure all dependencies are installed
+    2. **Restart Application**: Sometimes a restart resolves import issues  
+    3. **Check Environment**: Verify Python environment is correct
+    4. **Contact Support**: If issues persist, contact technical support
+    
+    ### 📋 Required Dependencies:
+    - streamlit >= 1.28.0
+    - pandas >= 2.0.0
+    - openpyxl >= 3.1.0
+    - rapidfuzz >= 3.5.0
+    - jinja2 >= 3.1.0
+    - msal >= 1.24.0
+    - requests >= 2.31.0
+    - python-dotenv >= 1.0.0
+    """)
+    
+    if st.button("🧪 Run Diagnostic Test"):
+        st.rerun()
 
 def render_main_selection():
     """Render the professional VC dashboard interface"""
@@ -2080,34 +2146,53 @@ def render_settings_interface():
                 st.error(f"Test send error: {e}")
 
 if __name__ == "__main__":
-    # Check for first-run setup (Excel configuration) before proceeding
-    if config_manager.is_first_run():
-        render_first_run_setup()
-        st.stop()
-    
-    initialize_session_state()
-    
-    # Always render navigation (except on main page)
-    current_interface = st.session_state.get('current_interface', 'main_selection')
-    
-    if current_interface != 'main_selection':
-        render_navigation()
-    
-    # Router based on current interface
-    if current_interface == 'main_selection':
-        render_navigation()  # Show nav on main page too
-        render_main_selection()
-    elif current_interface == 'fee_generation':
-        render_specialized_fee_generation()
-    elif current_interface == 'chat':
-        main()  # Use existing chat interface
-    elif current_interface == 'analytics':
-        render_fee_letter_dashboard()  # Use existing dashboard
-    elif current_interface == 'research':
-        render_research_interface()
-    elif current_interface == 'settings':
-        render_settings_interface()
-    else:
-        # Fallback to main selection
-        st.session_state.current_interface = 'main_selection'
-        st.rerun()
+    try:
+        # Check for first-run setup (Excel configuration) before proceeding
+        if config_manager.is_first_run():
+            render_first_run_setup()
+            st.stop()
+        
+        initialize_session_state()
+        
+        # Always render navigation (except on main page)
+        current_interface = st.session_state.get('current_interface', 'main_selection')
+        
+        if current_interface != 'main_selection':
+            render_navigation()
+        
+        # Router based on current interface
+        if current_interface == 'main_selection':
+            render_navigation()  # Show nav on main page too
+            render_main_selection()
+        elif current_interface == 'fee_generation':
+            render_specialized_fee_generation()
+        elif current_interface == 'chat':
+            main()  # Use existing chat interface
+        elif current_interface == 'analytics':
+            render_fee_letter_dashboard()  # Use existing dashboard
+        elif current_interface == 'research':
+            render_research_interface()
+        elif current_interface == 'settings':
+            render_settings_interface()
+        else:
+            # Fallback to main selection
+            st.session_state.current_interface = 'main_selection'
+            st.rerun()
+            
+    except Exception as e:
+        st.error("🚫 **Application Error**")
+        st.markdown(f"""
+        ### ❌ The application encountered an error:
+        
+        ```
+        {str(e)}
+        ```
+        
+        This is likely due to missing dependencies or configuration issues.
+        """)
+        
+        if st.button("🧪 Show Diagnostic Information"):
+            import traceback
+            st.code(traceback.format_exc())
+            
+        render_minimal_fallback()

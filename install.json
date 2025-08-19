@@ -58,13 +58,13 @@
     {
       "method": "log",
       "params": {
-        "text": "🤖 Installing AI dependencies (optional)..."
+        "text": "🤖 Installing AI dependencies (optional - may fail in some environments)..."
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install langchain langchain-community || echo 'Warning: LangChain installation failed, continuing...'",
+        "message": "pip install langchain langchain-community 2>/dev/null || echo 'ℹ️ LangChain not available - AI chat features will be disabled'",
         "venv": "env"
       }
     },

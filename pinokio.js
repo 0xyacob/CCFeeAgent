@@ -40,6 +40,14 @@ module.exports = {
         text: "Start Fee Letter Agent",
         href: "start.json"
       }, {
+        icon: "fa-solid fa-rocket",
+        text: "Start Simple Version",
+        href: "start_simple.json"
+      }, {
+        icon: "fa-solid fa-vial",
+        text: "Run Diagnostic Test",
+        href: "test.json"
+      }, {
         icon: "fa-solid fa-rotate",
         text: "Update Dependencies",
         href: "update.json"
