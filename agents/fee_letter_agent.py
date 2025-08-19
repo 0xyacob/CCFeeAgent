@@ -554,6 +554,30 @@ class FeeLetterAgent(BaseAgent):
         except Exception as e:
             return {"ok": False, "error": f"❌ Error refreshing cache: {e}"}
     
+    def debug_company_search(self, company_name: str, excel_path: Optional[str] = None) -> Dict[str, Any]:
+        """Debug company search to show available companies and search process."""
+        try:
+            # Use provided excel_path or get from config
+            if not excel_path:
+                excel_path = self.config_manager.get("EXCEL_PATH") if hasattr(self, 'config_manager') else None
+            
+            if not excel_path:
+                return {"ok": False, "error": "No Excel path configured"}
+            
+            # Get or create Excel adapter
+            from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
+            adapter = FeeLetterAgent._excel_adapter_cache.get(excel_path)
+            if adapter is None:
+                adapter = ExcelLocalThreeSheet(excel_path)
+                FeeLetterAgent._excel_adapter_cache[excel_path] = adapter
+            
+            # Get debug information
+            debug_info = adapter.debug_company_search(company_name)
+            return {"ok": True, "debug_info": debug_info}
+            
+        except Exception as e:
+            return {"ok": False, "error": f"❌ Error debugging company search: {e}"}
+    
     def execute_enhanced(self, prompt: str, custom_fees: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
         """Enhanced fee letter generation with robust parsing, validation, fuzzy matching, and activity logging."""
         try:

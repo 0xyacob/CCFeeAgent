@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 def _as_pct(x):
@@ -392,6 +392,57 @@ class ExcelLocalThreeSheet:
             idx = choices.index(hit[0])
             return self.cos.iloc[idx].to_dict()
         return None
+
+    def list_available_companies(self) -> List[str]:
+        """Return list of all available company names for debugging."""
+        name_col = getattr(self, "_co_company_name_col", None)
+        if not name_col or name_col not in self.cos.columns:
+            return []
+        return self.cos[name_col].astype(str).str.strip().tolist()
+
+    def debug_company_search(self, company_query: str) -> Dict[str, Any]:
+        """Debug company search to show what's happening."""
+        debug_info = {
+            "query": company_query,
+            "available_companies": self.list_available_companies(),
+            "search_steps": []
+        }
+        
+        name_col = getattr(self, "_co_company_name_col", None)
+        if not name_col or name_col not in self.cos.columns:
+            debug_info["error"] = f"Company name column not found. Expected column: {name_col}"
+            return debug_info
+        
+        s = str(company_query or "").strip().lower()
+        debug_info["normalized_query"] = s
+        
+        # Test each search step
+        # 1. Exact match
+        m = self.cos[self.cos[name_col].astype(str).str.strip().str.lower() == s]
+        debug_info["search_steps"].append(f"Exact match: {len(m)} results")
+        
+        # 2. Contains
+        if m.empty:
+            m = self.cos[self.cos[name_col].astype(str).str.lower().str.contains(s, na=False)]
+            debug_info["search_steps"].append(f"Contains match: {len(m)} results")
+        
+        # 3. Normalized (remove legal suffixes)
+        if m.empty:
+            def _norm(n: str) -> str:
+                x = str(n or "").lower().strip()
+                for suf in [" limited", " ltd.", " ltd", " plc", " llp", " inc.", " inc", " corp.", " corp", " co.", " company"]:
+                    if x.endswith(suf):
+                        x = x[: -len(suf)]
+                        break
+                x = " ".join(x.split())
+                return x
+            s_norm = _norm(company_query)
+            debug_info["normalized_query_suffix_removed"] = s_norm
+            self.cos["__norm__"] = self.cos[name_col].astype(str).map(_norm)
+            m = self.cos[self.cos["__norm__"] == s_norm]
+            debug_info["search_steps"].append(f"Normalized match: {len(m)} results")
+        
+        return debug_info
 
     def resolve_payload(
         self,

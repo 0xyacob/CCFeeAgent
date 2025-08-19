@@ -1479,7 +1479,7 @@ def render_specialized_fee_generation():
     """, unsafe_allow_html=True)
     
     # Data refresh section
-    col_refresh, col_info = st.columns([1, 3])
+    col_refresh, col_debug, col_info = st.columns([1, 1, 2])
     with col_refresh:
         if st.button("🔄 Refresh Excel Data", help="Reload data from Excel file if you've made changes"):
             if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
@@ -1489,6 +1489,40 @@ def render_specialized_fee_generation():
                     st.success(result.get("message", "✅ Excel data refreshed"))
                 else:
                     st.error(result.get("error", "❌ Failed to refresh data"))
+            else:
+                st.warning("⚠️ Fee agent not initialized")
+    
+    with col_debug:
+        if st.button("🔍 Debug Company Search", help="Show available companies and debug search"):
+            if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
+                # Get company name from form (if available) or use a test name
+                test_company = st.session_state.get("specialized_company_name", "pingus")
+                excel_path = config_manager.get("EXCEL_PATH")
+                result = st.session_state.fee_agent.debug_company_search(test_company, excel_path)
+                if result.get("ok"):
+                    debug_info = result.get("debug_info", {})
+                    
+                    with st.expander("🔍 Company Search Debug Info", expanded=True):
+                        st.write(f"**Searching for:** {debug_info.get('query', 'N/A')}")
+                        st.write(f"**Normalized query:** {debug_info.get('normalized_query', 'N/A')}")
+                        
+                        if "error" in debug_info:
+                            st.error(debug_info["error"])
+                        else:
+                            st.write("**Search steps:**")
+                            for step in debug_info.get("search_steps", []):
+                                st.write(f"- {step}")
+                            
+                            st.write("**Available companies:**")
+                            companies = debug_info.get("available_companies", [])
+                            if companies:
+                                # Show companies in a more readable format
+                                for i, company in enumerate(companies, 1):
+                                    st.write(f"{i}. {company}")
+                            else:
+                                st.warning("No companies found in Excel file!")
+                else:
+                    st.error(result.get("error", "❌ Failed to debug company search"))
             else:
                 st.warning("⚠️ Fee agent not initialized")
     
