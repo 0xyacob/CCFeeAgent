@@ -828,38 +828,35 @@ def render_fee_letter_dashboard():
         activity_logger = ActivityLogger()
         fee_agent = FeeLetterAgent()
         
-        # Auto-clear Excel cache to ensure fresh data (workaround for Pinokio deployment issues)
-        try:
-            from config_manager import config_manager
-            excel_path = config_manager.get("EXCEL_PATH")
-            if excel_path and hasattr(fee_agent, 'refresh_excel_cache'):
-                fee_agent.refresh_excel_cache(excel_path)  # Clear cache automatically
-        except Exception as e:
-            pass  # Silently continue if cache refresh fails
-        
         # Dashboard tabs
         tab1, tab2, tab3, tab4 = st.tabs(["📝 Generate Fee Letter", "📊 Activity Log", "🔍 Preview & Validate", "📈 Analytics"])
         
         with tab1:
             st.header("📝 Generate Fee Letter")
             
-            # Auto-refresh cache and add manual refresh option
-            col_refresh, col_info = st.columns([1, 3])
+            # Excel Data Management
+            col_refresh, col_debug = st.columns(2)
             with col_refresh:
-                if st.button("🔄 Refresh Excel Data", help="Reload data from Excel file if you've made changes"):
-                    if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
-                        from config_manager import config_manager
-                        excel_path = config_manager.get("EXCEL_PATH")
-                        result = st.session_state.fee_agent.refresh_excel_cache(excel_path)
-                        if result.get("ok"):
-                            st.success(result.get("message", "✅ Excel data refreshed"))
-                        else:
-                            st.error(result.get("error", "❌ Failed to refresh data"))
-                    else:
-                        st.warning("⚠️ Fee agent not initialized")
+                if st.button("🔄 Refresh Excel Data", help="Clear cache and reload Excel data"):
+                    try:
+                        fee_agent.refresh_excel_cache()
+                        st.success("✅ Excel data cache refreshed!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error refreshing cache: {str(e)}")
             
-            with col_info:
-                st.info("💡 **Tip:** If you've updated your Excel file (added companies, investors, etc.) while the app is running, click 'Refresh Excel Data' to load the changes.")
+            with col_debug:
+                if st.button("🔍 Debug Company Search", help="Show available companies in Excel"):
+                    try:
+                        debug_info = fee_agent.debug_company_search()
+                        st.info(f"📊 Found {debug_info['total_companies']} companies in Excel")
+                        with st.expander("📋 Available Companies"):
+                            for company in debug_info['company_names'][:10]:  # Show first 10
+                                st.write(f"• {company}")
+                            if len(debug_info['company_names']) > 10:
+                                st.write(f"... and {len(debug_info['company_names']) - 10} more")
+                    except Exception as e:
+                        st.error(f"❌ Error debugging companies: {str(e)}")
             
             st.markdown("---")
             
@@ -1507,59 +1504,6 @@ def render_specialized_fee_generation():
     </div>
     """, unsafe_allow_html=True)
     
-    # Data refresh section
-    col_refresh, col_debug, col_info = st.columns([1, 1, 2])
-    with col_refresh:
-        if st.button("🔄 Refresh Excel Data", help="Reload data from Excel file if you've made changes"):
-            if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
-                excel_path = config_manager.get("EXCEL_PATH")
-                result = st.session_state.fee_agent.refresh_excel_cache(excel_path)
-                if result.get("ok"):
-                    st.success(result.get("message", "✅ Excel data refreshed"))
-                else:
-                    st.error(result.get("error", "❌ Failed to refresh data"))
-            else:
-                st.warning("⚠️ Fee agent not initialized")
-    
-    with col_debug:
-        if st.button("🔍 Debug Company Search", help="Show available companies and debug search"):
-            if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
-                # Get company name from form (if available) or use a test name
-                test_company = st.session_state.get("specialized_company_name", "pingus")
-                excel_path = config_manager.get("EXCEL_PATH")
-                result = st.session_state.fee_agent.debug_company_search(test_company, excel_path)
-                if result.get("ok"):
-                    debug_info = result.get("debug_info", {})
-                    
-                    with st.expander("🔍 Company Search Debug Info", expanded=True):
-                        st.write(f"**Searching for:** {debug_info.get('query', 'N/A')}")
-                        st.write(f"**Normalized query:** {debug_info.get('normalized_query', 'N/A')}")
-                        
-                        if "error" in debug_info:
-                            st.error(debug_info["error"])
-                        else:
-                            st.write("**Search steps:**")
-                            for step in debug_info.get("search_steps", []):
-                                st.write(f"- {step}")
-                            
-                            st.write("**Available companies:**")
-                            companies = debug_info.get("available_companies", [])
-                            if companies:
-                                # Show companies in a more readable format
-                                for i, company in enumerate(companies, 1):
-                                    st.write(f"{i}. {company}")
-                            else:
-                                st.warning("No companies found in Excel file!")
-                else:
-                    st.error(result.get("error", "❌ Failed to debug company search"))
-            else:
-                st.warning("⚠️ Fee agent not initialized")
-    
-    with col_info:
-        st.info("💡 **Tip:** If you've updated your Excel file (added companies, investors, etc.) while the app is running, click 'Refresh Excel Data' to load the changes.")
-    
-    st.markdown("---")
-    
     # Main form
     with st.form("specialized_fee_form", clear_on_submit=False):
         
@@ -2101,7 +2045,7 @@ if __name__ == "__main__":
     elif current_interface == 'chat':
         main()  # Use existing chat interface
     elif current_interface == 'analytics':
-        render_specialized_fee_generation()  # Use updated interface with refresh button
+        render_fee_letter_dashboard()  # Use existing dashboard
     elif current_interface == 'research':
         render_research_interface()
     elif current_interface == 'settings':

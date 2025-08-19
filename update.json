@@ -4,20 +4,40 @@
     {
       "method": "log",
       "params": {
-        "text": "🔄 Updating CC Fee Letter Agent dependencies..."
+        "text": "🔄 Updating CC Fee Letter Agent and clearing cache..."
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv langchain langchain-community",
+        "message": "find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "pip install --upgrade --force-reinstall streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv langchain langchain-community",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "🔄 Verifying Python modules are properly refreshed..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "python -c \"import sys; [sys.modules.pop(k) for k in list(sys.modules.keys()) if k.startswith('adapters') or k.startswith('vc_') or k.startswith('agents')]\" 2>/dev/null || true",
         "venv": "env"
       }
     },
     {
       "method": "notify",
       "params": {
-        "text": "✅ CC Fee Letter Agent updated successfully!"
+        "text": "✅ CC Fee Letter Agent updated and cache cleared successfully!"
       }
     }
   ]

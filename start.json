@@ -5,7 +5,14 @@
     {
       "method": "log",
       "params": {
-        "text": "🚀 Starting CC Fee Letter Agent...\n📧 Professional fee letter generation and email automation\n🌐 Opening in browser at http://localhost:8505"
+        "text": "🚀 Starting CC Fee Letter Agent...\n📧 Professional fee letter generation and email automation\n🧹 Clearing Python cache for fresh start\n🌐 Opening in browser at http://localhost:8505"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true"
       }
     },
     {
