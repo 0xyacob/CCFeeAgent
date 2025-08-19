@@ -77,21 +77,21 @@
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import streamlit; print('✅ Streamlit:', streamlit.__version__)\"",
+        "message": "python -c \"import streamlit; print('✅ Streamlit version:', streamlit.__version__)\"",
         "venv": "env"
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import pandas; print('✅ Pandas:', pandas.__version__)\"",
+        "message": "python -c \"import pandas; print('✅ Pandas version:', pandas.__version__)\"",
         "venv": "env"
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import msal; print('✅ MSAL:', msal.__version__)\"",
+        "message": "python -c \"import msal; print('✅ MSAL version:', msal.__version__)\"",
         "venv": "env"
       }
     },
