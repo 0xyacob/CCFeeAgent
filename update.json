@@ -1,0 +1,24 @@
+{
+  "version": "4.0",
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🔄 Updating CC Fee Letter Agent dependencies..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "pip install --upgrade streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "text": "✅ CC Fee Letter Agent updated successfully!"
+      }
+    }
+  ]
+}

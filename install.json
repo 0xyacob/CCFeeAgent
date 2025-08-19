@@ -1,0 +1,32 @@
+{
+  "version": "4.0",
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "Creating Python environment for CC Fee Letter Agent...",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "python -c \"import streamlit, pandas, msal; print('✅ All dependencies installed successfully!')\"",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "text": "✅ CC Fee Letter Agent installed successfully! Click 'Start Fee Letter Agent' to begin."
+      }
+    }
+  ]
+}

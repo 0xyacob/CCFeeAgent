@@ -1,0 +1,21 @@
+{
+  "title": "CC Fee Letter Agent",
+  "description": "Professional fee letter generation and email automation for CC Growth EIS Fund. Automatically generates and sends professional fee letters via Microsoft Graph API with Excel data integration.",
+  "icon": "icon.png",
+  "links": [{
+    "title": "Committed Capital",
+    "value": "https://committedcapital.co.uk"
+  }, {
+    "title": "Support & Documentation",
+    "links": [{
+      "title": "README",
+      "value": "README.md"
+    }, {
+      "title": "Pinokio Deployment Guide", 
+      "value": "PINOKIO_DEPLOYMENT.md"
+    }, {
+      "title": "Enterprise Setup Guide",
+      "value": "ENTERPRISE_DEPLOYMENT_GUIDE.md"
+    }]
+  }]
+}

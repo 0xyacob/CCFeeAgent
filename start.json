@@ -1,0 +1,25 @@
+{
+  "version": "4.0",
+  "daemon": true,
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "text": "🚀 Starting CC Fee Letter Agent...\n📧 Professional fee letter generation and email automation\n🌐 Opening in browser at http://localhost:8505"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false",
+        "on": [
+          {
+            "event": "/http:\\/\\/localhost:8505/",
+            "done": true
+          }
+        ]
+      }
+    }
+  ]
+}
