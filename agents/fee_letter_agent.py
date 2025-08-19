@@ -506,6 +506,28 @@ class FeeLetterAgent(BaseAgent):
             self.last_email_error = str(e)
             return {"ok": False, "method": "microsoft_graph", "details": diagnostics, "error": self.last_email_error}
     
+    def refresh_excel_cache(self, excel_path: Optional[str] = None) -> Dict[str, Any]:
+        """Refresh the Excel data cache to reload data from disk.
+        
+        This is useful when the Excel file has been updated while the application is running.
+        """
+        try:
+            if excel_path:
+                # Clear specific path from cache
+                if excel_path in FeeLetterAgent._excel_adapter_cache:
+                    del FeeLetterAgent._excel_adapter_cache[excel_path]
+                    return {"ok": True, "message": f"✅ Cache cleared for {excel_path}"}
+                else:
+                    return {"ok": True, "message": f"ℹ️ No cached data found for {excel_path}"}
+            else:
+                # Clear entire cache
+                cache_size = len(FeeLetterAgent._excel_adapter_cache)
+                FeeLetterAgent._excel_adapter_cache.clear()
+                return {"ok": True, "message": f"✅ Cleared {cache_size} cached Excel adapters"}
+                
+        except Exception as e:
+            return {"ok": False, "error": f"❌ Error refreshing cache: {e}"}
+    
     def execute_enhanced(self, prompt: str, custom_fees: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
         """Enhanced fee letter generation with robust parsing, validation, fuzzy matching, and activity logging."""
         try:

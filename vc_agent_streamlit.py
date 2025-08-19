@@ -1478,6 +1478,25 @@ def render_specialized_fee_generation():
     </div>
     """, unsafe_allow_html=True)
     
+    # Data refresh section
+    col_refresh, col_info = st.columns([1, 3])
+    with col_refresh:
+        if st.button("🔄 Refresh Excel Data", help="Reload data from Excel file if you've made changes"):
+            if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
+                excel_path = config_manager.get("EXCEL_PATH")
+                result = st.session_state.fee_agent.refresh_excel_cache(excel_path)
+                if result.get("ok"):
+                    st.success(result.get("message", "✅ Excel data refreshed"))
+                else:
+                    st.error(result.get("error", "❌ Failed to refresh data"))
+            else:
+                st.warning("⚠️ Fee agent not initialized")
+    
+    with col_info:
+        st.info("💡 **Tip:** If you've updated your Excel file (added companies, investors, etc.) while the app is running, click 'Refresh Excel Data' to load the changes.")
+    
+    st.markdown("---")
+    
     # Main form
     with st.form("specialized_fee_form", clear_on_submit=False):
         
