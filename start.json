@@ -12,14 +12,7 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '🔍 Checking environment...' && python --version && echo 'Python OK' && python -c \"import streamlit; print('Streamlit', streamlit.__version__, 'ready')\" || echo '⚠️ Streamlit not available'"
-      }
-    },
-    {
-      "method": "shell.run",
-      "params": {
-        "venv": "env",
-        "message": "echo '🚀 Starting Streamlit application...' && python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0 --logger.level error",
+        "message": "python -m streamlit run vc_agent_streamlit.py --server.port 8505 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0",
         "on": [
           {
             "event": "/http:\\/\\/localhost:8505/",

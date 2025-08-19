@@ -12,14 +12,7 @@
       "method": "shell.run",
       "params": {
         "venv": "env",
-        "message": "echo '🔍 Quick environment check...' && python --version && python -c \"import streamlit, pandas; print('✅ Core dependencies ready')\""
-      }
-    },
-    {
-      "method": "shell.run",
-      "params": {
-        "venv": "env",
-        "message": "echo '🚀 Starting Simple Streamlit application...' && python -m streamlit run simple_app.py --server.port 8507 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0 --logger.level error",
+        "message": "python -m streamlit run simple_app.py --server.port 8507 --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0",
         "on": [
           {
             "event": "/http:\\/\\/localhost:8507/",
