@@ -850,11 +850,26 @@ def render_fee_letter_dashboard():
                     try:
                         debug_info = fee_agent.debug_company_search()
                         st.info(f"📊 Found {debug_info['total_companies']} companies in Excel")
-                        with st.expander("📋 Available Companies"):
-                            for company in debug_info['company_names'][:10]:  # Show first 10
-                                st.write(f"• {company}")
-                            if len(debug_info['company_names']) > 10:
-                                st.write(f"... and {len(debug_info['company_names']) - 10} more")
+                        
+                        # Show Dingus/Pingus status
+                        if debug_info.get('contains_dingus'):
+                            st.success("✅ 'Dingus Ltd' found in Excel")
+                        else:
+                            st.warning("⚠️ 'Dingus Ltd' NOT found in Excel")
+                        
+                        if debug_info.get('contains_pingus'):
+                            st.info("ℹ️ 'Pingus Ltd' found in Excel")
+                        
+                        with st.expander("📋 All Available Companies"):
+                            for company in debug_info['company_names']:  # Show ALL companies
+                                if "dingus" in company.lower():
+                                    st.write(f"🎯 **{company}** (Target - Dingus)")
+                                elif "pingus" in company.lower():
+                                    st.write(f"🔍 **{company}** (Contains 'Pingus')")
+                                else:
+                                    st.write(f"• {company}")
+                        
+                        st.caption(f"Excel file: {debug_info.get('excel_file', 'Unknown')}")
                     except Exception as e:
                         st.error(f"❌ Error debugging companies: {str(e)}")
             
@@ -1503,6 +1518,48 @@ def render_specialized_fee_generation():
         </p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Excel Data Management
+    try:
+        from agents.fee_letter_agent import FeeLetterAgent
+        fee_agent = FeeLetterAgent()
+        
+        col_refresh, col_debug = st.columns(2)
+        with col_refresh:
+            if st.button("🔄 Refresh Excel Data", help="Clear cache and reload Excel data"):
+                try:
+                    fee_agent.refresh_excel_cache()
+                    st.success("✅ Excel data cache refreshed!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error refreshing cache: {str(e)}")
+        
+        with col_debug:
+            if st.button("🔍 Debug Company Search", help="Show available companies in Excel"):
+                try:
+                    debug_info = fee_agent.debug_company_search()
+                    st.info(f"📊 Found {debug_info['total_companies']} companies in Excel")
+                    
+                    # Show Dingus/Pingus status
+                    if debug_info.get('contains_dingus'):
+                        st.success("✅ 'Dingus Ltd' found in Excel")
+                    else:
+                        st.warning("⚠️ 'Dingus Ltd' NOT found in Excel")
+                    
+                    if debug_info.get('contains_pingus'):
+                        st.info("ℹ️ 'Pingus Ltd' found in Excel")
+                    
+                    with st.expander("📋 All Available Companies"):
+                        for company in debug_info['company_names']:  # Show ALL companies
+                            st.write(f"• {company}")
+                    
+                    st.caption(f"Excel file: {debug_info.get('excel_file', 'Unknown')}")
+                except Exception as e:
+                    st.error(f"❌ Error debugging companies: {str(e)}")
+        
+        st.markdown("---")
+    except Exception as e:
+        st.warning(f"⚠️ Could not initialize Excel data management: {str(e)}")
     
     # Main form
     with st.form("specialized_fee_form", clear_on_submit=False):

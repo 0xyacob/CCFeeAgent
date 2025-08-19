@@ -392,21 +392,8 @@ class FeeLetterAgent(BaseAgent):
             from microsoft_graph_mail import MicrosoftGraphMailService
             mail_service = MicrosoftGraphMailService(send_mode=self.email_mode)
             
-            # Convert text body to HTML with proper formatting
-            # Replace line breaks with HTML breaks and preserve HTML tags
-            import html
-            # Don't escape HTML if it already contains HTML tags
-            if '<' in body and '>' in body:
-                # Assume it's already HTML formatted, just convert line breaks
-                html_body = body.replace('\n', '<br>\n')
-            else:
-                # Plain text - escape HTML and convert line breaks
-                html_body = html.escape(body).replace('\n', '<br>\n')
-            
-            # Wrap in a div with proper styling
-            html_body = f"""<div style='font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333;'>
-{html_body}
-</div>"""
+            # Convert plain text body to HTML for better formatting
+            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
             
             # Send via Microsoft Graph
             success = mail_service.send_or_draft(
@@ -439,21 +426,8 @@ class FeeLetterAgent(BaseAgent):
             # Parse primary recipients
             to_list = [addr.strip() for addr in to_addresses.split(';') if addr.strip()]
             
-            # Convert text body to HTML with proper formatting
-            # Replace line breaks with HTML breaks and preserve HTML tags
-            import html
-            # Don't escape HTML if it already contains HTML tags
-            if '<' in body and '>' in body:
-                # Assume it's already HTML formatted, just convert line breaks
-                html_body = body.replace('\n', '<br>\n')
-            else:
-                # Plain text - escape HTML and convert line breaks
-                html_body = html.escape(body).replace('\n', '<br>\n')
-            
-            # Wrap in a div with proper styling
-            html_body = f"""<div style='font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333;'>
-{html_body}
-</div>"""
+            # Convert plain text body to HTML for better formatting
+            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
             
             # Add CC information to the body
             html_body = f"<p><strong>CC:</strong> {cc_address}</p><hr/>{html_body}"
@@ -532,52 +506,6 @@ class FeeLetterAgent(BaseAgent):
             self.last_email_error = str(e)
             return {"ok": False, "method": "microsoft_graph", "details": diagnostics, "error": self.last_email_error}
     
-    def refresh_excel_cache(self, excel_path: Optional[str] = None) -> Dict[str, Any]:
-        """Refresh the Excel data cache to reload data from disk.
-        
-        This is useful when the Excel file has been updated while the application is running.
-        """
-        try:
-            if excel_path:
-                # Clear specific path from cache
-                if excel_path in FeeLetterAgent._excel_adapter_cache:
-                    del FeeLetterAgent._excel_adapter_cache[excel_path]
-                    return {"ok": True, "message": f"✅ Cache cleared for {excel_path}"}
-                else:
-                    return {"ok": True, "message": f"ℹ️ No cached data found for {excel_path}"}
-            else:
-                # Clear entire cache
-                cache_size = len(FeeLetterAgent._excel_adapter_cache)
-                FeeLetterAgent._excel_adapter_cache.clear()
-                return {"ok": True, "message": f"✅ Cleared {cache_size} cached Excel adapters"}
-                
-        except Exception as e:
-            return {"ok": False, "error": f"❌ Error refreshing cache: {e}"}
-    
-    def debug_company_search(self, company_name: str, excel_path: Optional[str] = None) -> Dict[str, Any]:
-        """Debug company search to show available companies and search process."""
-        try:
-            # Use provided excel_path or get from config
-            if not excel_path:
-                excel_path = self.config_manager.get("EXCEL_PATH") if hasattr(self, 'config_manager') else None
-            
-            if not excel_path:
-                return {"ok": False, "error": "No Excel path configured"}
-            
-            # Get or create Excel adapter
-            from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
-            adapter = FeeLetterAgent._excel_adapter_cache.get(excel_path)
-            if adapter is None:
-                adapter = ExcelLocalThreeSheet(excel_path)
-                FeeLetterAgent._excel_adapter_cache[excel_path] = adapter
-            
-            # Get debug information
-            debug_info = adapter.debug_company_search(company_name)
-            return {"ok": True, "debug_info": debug_info}
-            
-        except Exception as e:
-            return {"ok": False, "error": f"❌ Error debugging company search: {e}"}
-    
     def execute_enhanced(self, prompt: str, custom_fees: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
         """Enhanced fee letter generation with robust parsing, validation, fuzzy matching, and activity logging."""
         try:
@@ -638,7 +566,18 @@ class FeeLetterAgent(BaseAgent):
             reference_preface = None
             inv_data = None
             comp_data = None
-            excel_path = os.getenv("EXCEL_PATH")
+            
+            # Get Excel path from config manager (preferred) or environment variable (fallback)
+            excel_path = None
+            try:
+                from config_manager import ConfigManager
+                config_manager = ConfigManager()
+                excel_path = config_manager.get_excel_path()
+            except Exception:
+                pass
+            
+            if not excel_path:
+                excel_path = os.getenv("EXCEL_PATH")
             if excel_path:
                 try:
                     from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
@@ -1280,3 +1219,95 @@ class FeeLetterAgent(BaseAgent):
             
         except Exception as e:
             raise ValueError(f"Error finding investor data: {str(e)}")
+    
+    def refresh_excel_cache(self) -> bool:
+        """Clear the Excel adapter cache to force fresh data loading."""
+        try:
+            # Clear the class-level cache that stores adapter instances
+            if hasattr(FeeLetterAgent, '_excel_adapter_cache'):
+                FeeLetterAgent._excel_adapter_cache.clear()
+            
+            # Clear any instance-level cached adapter
+            if hasattr(self, '_excel_adapter'):
+                delattr(self, '_excel_adapter')
+            
+            # Force re-initialization on next use
+            self._excel_adapter = None
+            
+            return True
+        except Exception as e:
+            raise ValueError(f"Error refreshing Excel cache: {str(e)}")
+    
+    def debug_company_search(self) -> Dict[str, Any]:
+        """Debug company search by listing available companies in Excel."""
+        try:
+            from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
+            
+            # Get Excel file path from config manager
+            try:
+                from config_manager import ConfigManager
+                config_manager = ConfigManager()
+                excel_file_path = config_manager.get_excel_path()
+            except Exception as e:
+                excel_file_path = None
+            
+            if not excel_file_path:
+                # Fallback: try environment variable
+                import os
+                excel_file_path = os.getenv('EXCEL_PATH')
+            
+            if not excel_file_path:
+                return {
+                    "total_companies": 0,
+                    "company_names": [],
+                    "error": "No Excel file path configured. Please go to Settings to configure your Excel file."
+                }
+            
+            # Initialize adapter and get company data
+            adapter = ExcelLocalThreeSheet(excel_file_path)
+            
+            # Get company data from the adapter
+            if hasattr(adapter, 'cos') and adapter.cos is not None:
+                company_data = adapter.cos
+                
+                # Try common column names for company names
+                name_columns = ['Company Name', 'Name', 'Company', 'Legal Name']
+                company_names = []
+                
+                for col in name_columns:
+                    if col in company_data.columns:
+                        names = company_data[col].dropna().astype(str).tolist()
+                        company_names.extend([name for name in names if name.strip()])
+                        break
+                
+                # If no standard column found, try all columns that might contain company names
+                if not company_names:
+                    for col in company_data.columns:
+                        if any(word in col.lower() for word in ['company', 'name', 'firm', 'business']):
+                            names = company_data[col].dropna().astype(str).tolist()
+                            company_names.extend([name for name in names if name.strip()])
+                            break
+                
+                unique_companies = sorted(list(set(company_names)))
+                return {
+                    "total_companies": len(unique_companies),
+                    "company_names": unique_companies,
+                    "excel_file": excel_file_path,
+                    "columns_found": list(company_data.columns),
+                    "contains_dingus": any("dingus" in name.lower() for name in unique_companies),
+                    "contains_pingus": any("pingus" in name.lower() for name in unique_companies)
+                }
+            else:
+                return {
+                    "total_companies": 0,
+                    "company_names": [],
+                    "error": "Could not access company data from Excel adapter",
+                    "excel_file": excel_file_path
+                }
+                
+        except Exception as e:
+            return {
+                "total_companies": 0,
+                "company_names": [],
+                "error": f"Error debugging company search: {str(e)}"
+            }
