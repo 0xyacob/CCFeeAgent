@@ -2,23 +2,103 @@
   "version": "3.7.0",
   "run": [
     {
+      "method": "log",
+      "params": {
+        "text": "🔧 Creating Python virtual environment..."
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
-        "message": "Creating Python environment for CC Fee Letter Agent...",
+        "message": "python -m pip install --upgrade pip",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "📦 Installing core dependencies..."
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install streamlit>=1.28.0",
         "venv": "env"
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install streamlit pandas openpyxl rapidfuzz jinja2 msal requests pathlib python-dotenv langchain langchain-community",
+        "message": "pip install pandas>=2.0.0 openpyxl>=3.1.0",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install rapidfuzz>=3.5.0 jinja2>=3.1.0",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install msal>=1.24.0 requests>=2.31.0",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install python-dotenv>=1.0.0",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "🤖 Installing AI dependencies (optional)..."
+      }
+    },
+    {
+      "method": "shell.run", 
+      "params": {
+        "message": "pip install langchain langchain-community || echo 'Warning: LangChain installation failed, continuing...'",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "text": "✅ Testing installation..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "python -c \"import streamlit; print('✅ Streamlit:', streamlit.__version__)\"",
         "venv": "env"
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import streamlit, pandas, msal; print('✅ All dependencies installed successfully!')\"",
+        "message": "python -c \"import pandas; print('✅ Pandas:', pandas.__version__)\"",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "python -c \"import msal; print('✅ MSAL:', msal.__version__)\"",
+        "venv": "env"
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "which streamlit && echo '✅ Streamlit command found' || echo '❌ Streamlit command not found'",
         "venv": "env"
       }
     },
