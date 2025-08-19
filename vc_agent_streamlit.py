@@ -828,11 +828,40 @@ def render_fee_letter_dashboard():
         activity_logger = ActivityLogger()
         fee_agent = FeeLetterAgent()
         
+        # Auto-clear Excel cache to ensure fresh data (workaround for Pinokio deployment issues)
+        try:
+            from config_manager import config_manager
+            excel_path = config_manager.get("EXCEL_PATH")
+            if excel_path and hasattr(fee_agent, 'refresh_excel_cache'):
+                fee_agent.refresh_excel_cache(excel_path)  # Clear cache automatically
+        except Exception as e:
+            pass  # Silently continue if cache refresh fails
+        
         # Dashboard tabs
         tab1, tab2, tab3, tab4 = st.tabs(["📝 Generate Fee Letter", "📊 Activity Log", "🔍 Preview & Validate", "📈 Analytics"])
         
         with tab1:
             st.header("📝 Generate Fee Letter")
+            
+            # Auto-refresh cache and add manual refresh option
+            col_refresh, col_info = st.columns([1, 3])
+            with col_refresh:
+                if st.button("🔄 Refresh Excel Data", help="Reload data from Excel file if you've made changes"):
+                    if hasattr(st.session_state, 'fee_agent') and st.session_state.fee_agent:
+                        from config_manager import config_manager
+                        excel_path = config_manager.get("EXCEL_PATH")
+                        result = st.session_state.fee_agent.refresh_excel_cache(excel_path)
+                        if result.get("ok"):
+                            st.success(result.get("message", "✅ Excel data refreshed"))
+                        else:
+                            st.error(result.get("error", "❌ Failed to refresh data"))
+                    else:
+                        st.warning("⚠️ Fee agent not initialized")
+            
+            with col_info:
+                st.info("💡 **Tip:** If you've updated your Excel file (added companies, investors, etc.) while the app is running, click 'Refresh Excel Data' to load the changes.")
+            
+            st.markdown("---")
             
             # Initialize form widget keys in session state if not present
             if 'input_investor_name' not in st.session_state:
