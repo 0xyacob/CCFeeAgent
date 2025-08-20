@@ -44,14 +44,6 @@ module.exports = {
         text: "Start Simple Version",
         href: "start_simple.json"
       }, {
-        icon: "fa-solid fa-flask",
-        text: "Test Ultra-Simple Startup",
-        href: "start_test.json"
-      }, {
-        icon: "fa-solid fa-bug",
-        text: "Debug Startup Issues",
-        href: "start_debug.json"
-      }, {
         icon: "fa-solid fa-vial",
         text: "Run Diagnostic Test",
         href: "test.json"
@@ -59,10 +51,6 @@ module.exports = {
         icon: "fa-solid fa-rotate",
         text: "Update Dependencies",
         href: "update.json"
-      }, {
-        icon: "fa-solid fa-broom",
-        text: "Clean Up Files",
-        href: "cleanup.json"
       }, {
         icon: "fa-solid fa-plug",
         text: "Reinstall",

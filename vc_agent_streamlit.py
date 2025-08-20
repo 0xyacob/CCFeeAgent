@@ -643,6 +643,65 @@ def main():
         
         st.markdown("---")
         
+        # Show current Excel path and warn if it's a temporary upload copy
+        try:
+            current_excel_path = config_manager.get_excel_path()
+            if current_excel_path:
+                st.caption(f"Using Excel file: `{current_excel_path}`")
+                try:
+                    import os, datetime
+                    mtime = os.path.getmtime(current_excel_path)
+                    st.caption(f"Last modified: {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+                    col_open1, col_open2 = st.columns(2)
+                    with col_open1:
+                        if st.button("Reveal in Finder"):
+                            os.system(f"open -R '{current_excel_path}'")
+                    with col_open2:
+                        if st.button("Open in Excel"):
+                            os.system(f"open '{current_excel_path}'")
+                except Exception:
+                    pass
+                if ".streamlit_temp" in current_excel_path:
+                    st.warning("You're using a temporary uploaded copy. Refresh will re-read this temp file only. To reflect live edits to your original workbook, go to Settings and set the Excel path to the original file.")
+        except Exception:
+            pass
+
+        # Quick-change / Maintain single-source-of-truth file (no temp switching by default)
+        with st.expander("📂 Maintain Excel File", expanded=False):
+            st.caption("Recommended: keep one shared Excel file. Uploading will replace that file in-place (path unchanged).")
+            uploaded = render_file_uploader("quick_change")
+            if uploaded and current_excel_path:
+                col_rep, col_switch = st.columns(2)
+                with col_rep:
+                    if st.button("⬆️ Replace current file in-place", key="replace_current_file"):
+                        try:
+                            import shutil
+                            shutil.copyfile(uploaded, current_excel_path)
+                            fee_agent.refresh_excel_cache()
+                            st.success("Replaced configured Excel file in-place. Cache cleared.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to replace file: {e}")
+                with col_switch:
+                    if st.button("🔁 Switch to uploaded copy (not recommended)", key="switch_to_uploaded"):
+                        if config_manager.set_excel_path(uploaded):
+                            fee_agent.refresh_excel_cache()
+                            st.success("Excel path updated to uploaded file. Cache cleared.")
+                            st.rerun()
+                        else:
+                            st.error("Failed to update Excel path")
+
+            st.markdown("**Or enter path manually:**")
+            manual_new = st.text_input("New Excel File Path", value=current_excel_path or "", key="quick_change_path")
+            if st.button("💾 Use This Path", key="quick_change_save"):
+                if manual_new:
+                    if config_manager.set_excel_path(manual_new):
+                        fee_agent.refresh_excel_cache()
+                        st.success("Excel path updated. Cache cleared.")
+                        st.rerun()
+                    else:
+                        st.error("Failed to update Excel path")
+        
         # Conversation analytics
         st.header("📊 Analytics")
         render_conversation_analytics()
@@ -1605,24 +1664,99 @@ def render_specialized_fee_generation():
                 try:
                     debug_info = fee_agent.debug_company_search()
                     st.info(f"📊 Found {debug_info['total_companies']} companies in Excel")
+                    # Show file and modified time explicitly
+                    if debug_info.get('excel_file'):
+                        st.caption(f"Excel file: {debug_info.get('excel_file')}")
+                    if debug_info.get('excel_mtime'):
+                        st.caption(f"Last modified: {debug_info.get('excel_mtime')}")
                     
-                    # Show Dingus/Pingus status
-                    if debug_info.get('contains_dingus'):
-                        st.success("✅ 'Dingus Ltd' found in Excel")
-                    else:
-                        st.warning("⚠️ 'Dingus Ltd' NOT found in Excel")
-                    
-                    if debug_info.get('contains_pingus'):
-                        st.info("ℹ️ 'Pingus Ltd' found in Excel")
+                    # Optional status (muted to avoid noise)
+                    if debug_info.get('contains_dingus') or debug_info.get('contains_pingus'):
+                        st.caption("Test companies present in dataset.")
                     
                     with st.expander("📋 All Available Companies"):
                         for company in debug_info['company_names']:  # Show ALL companies
                             st.write(f"• {company}")
-                    
-                    st.caption(f"Excel file: {debug_info.get('excel_file', 'Unknown')}")
                 except Exception as e:
                     st.error(f"❌ Error debugging companies: {str(e)}")
         
+        # Show current Excel path and last-modified for visibility
+        try:
+            # Re-read config fresh from disk to avoid stale in-memory values
+            from config_manager import ConfigManager as _CMDisp
+            current_excel_path = _CMDisp().get_excel_path()
+            if current_excel_path:
+                st.caption(f"Using Excel file: `{current_excel_path}`")
+                import os, datetime
+                try:
+                    mtime = os.path.getmtime(current_excel_path)
+                    st.caption(f"Last modified: {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Maintain Excel File controls (placed on Fee Letter Generation page)
+        try:
+            if current_excel_path:
+                with st.expander("📂 Maintain Excel File", expanded=False):
+                    st.caption("Recommended: keep one shared Excel file. Uploading will replace that file in-place (path unchanged).")
+                    # Direct uploader that does NOT auto-change path
+                    import os
+                    from pathlib import Path
+                    up = st.file_uploader(
+                        "Choose Excel File",
+                        type=["xlsx", "xls"],
+                        key="maintain_excel_uploader",
+                        help="Upload a new version to replace the current shared file"
+                    )
+                    temp_upload_path = None
+                    if up is not None:
+                        temp_dir = Path.home() / ".streamlit_temp"
+                        temp_dir.mkdir(exist_ok=True)
+                        temp_upload_path = str(temp_dir / up.name)
+                        try:
+                            with open(temp_upload_path, "wb") as f:
+                                f.write(up.getbuffer())
+                            st.success(f"Uploaded: {up.name}")
+                            st.caption(f"Temporary upload: {temp_upload_path}")
+                        except Exception as e:
+                            st.error(f"Failed to save upload: {e}")
+
+                    if temp_upload_path:
+                        col_rep_fp, col_switch_fp = st.columns(2)
+                        with col_rep_fp:
+                            if st.button("⬆️ Replace current file in-place", key="replace_current_file_fp"):
+                                try:
+                                    import shutil
+                                    shutil.copyfile(temp_upload_path, current_excel_path)
+                                    fee_agent.refresh_excel_cache()
+                                    st.success("Replaced configured Excel file in-place. Cache cleared.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Failed to replace file: {e}")
+                        with col_switch_fp:
+                            if st.button("🔁 Switch to uploaded copy (not recommended)", key="switch_to_uploaded_fp"):
+                                if config_manager.set_excel_path(temp_upload_path):
+                                    fee_agent.refresh_excel_cache()
+                                    st.success("Excel path updated to uploaded file. Cache cleared.")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to update Excel path")
+
+                    st.markdown("**Or enter path manually:**")
+                    manual_new_fp = st.text_input("New Excel File Path", value=current_excel_path or "", key="quick_change_path_fp")
+                    if st.button("💾 Use This Path", key="quick_change_save_fp"):
+                        if manual_new_fp:
+                            if config_manager.set_excel_path(manual_new_fp):
+                                fee_agent.refresh_excel_cache()
+                                st.success("Excel path updated. Cache cleared.")
+                                st.rerun()
+                            else:
+                                st.error("Failed to update Excel path")
+        except Exception:
+            pass
+
         st.markdown("---")
     except Exception as e:
         st.warning(f"⚠️ Could not initialize Excel data management: {str(e)}")
@@ -1667,6 +1801,51 @@ def render_specialized_fee_generation():
         st.caption("Fees, investor classification (Professional/Retail), and investment type (Gross/Net) are pulled from Excel (FeeSheet/InvestorSheet). Share price and class come from CompanySheet.")
         
         st.markdown("---")
+        
+        # Overrides section (take precedence over Excel)
+        overrides = {}
+        with st.expander("⚙️ Override variables (optional)", expanded=False):
+            st.caption("These values will override Excel for this letter only.")
+            col_ov1, col_ov2, col_ov3 = st.columns(3)
+            with col_ov1:
+                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
+                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0, value=0.0, step=0.5)
+            with col_ov2:
+                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
+                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0, value=0.0, step=0.01)
+            with col_ov3:
+                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
+                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"], index=0)
+            
+            # Additional overrides (investor type and share class)
+            col_ov4, col_ov5 = st.columns(2)
+            with col_ov4:
+                ov_investor_type = st.selectbox(
+                    "Investor Type", ["No override", "Professional", "Retail"], index=0,
+                    help="Override investor classification"
+                )
+            with col_ov5:
+                ov_share_class = st.text_input(
+                    "Share Class Override", value="", placeholder="e.g., A Ordinary",
+                    help="Override share class name"
+                )
+            
+            if ov_upfront > 0:
+                overrides['upfront_fee_pct'] = float(ov_upfront)
+            if ov_amc13 > 0:
+                overrides['amc_1_3_pct'] = float(ov_amc13)
+            if ov_amc45 > 0:
+                overrides['amc_4_5_pct'] = float(ov_amc45)
+            if ov_vat > 0:
+                overrides['vat_rate'] = float(ov_vat)
+            if ov_share > 0:
+                overrides['share_price_override'] = float(ov_share)
+            if ov_type != "No override":
+                overrides['investment_type_override'] = ov_type.lower()
+            if ov_investor_type != "No override":
+                overrides['investor_type_override'] = ov_investor_type.lower()
+            if ov_share_class.strip():
+                overrides['share_class_override'] = ov_share_class.strip()
         
         
         # Form submission
@@ -1734,7 +1913,8 @@ def render_specialized_fee_generation():
                 if excel_path:
                     os.environ["EXCEL_PATH"] = excel_path
                 
-                result = fee_agent.execute_enhanced(prompt)
+                custom_fees = overrides if overrides else None
+                result = fee_agent.execute_enhanced(prompt, custom_fees=custom_fees)
                 
                 if result["success"]:
                     st.success(result['message'].replace("✅ ", ""))
@@ -1863,19 +2043,23 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
             # Format method display
             method_display = "Net" if "net" in fee_calculation.calculation_method.lower() else "Gross"
             
-            # Use the actual AMC fee values from the calculation result for consistency
-            amc_1_3_cost = fee_calculation.amc_1_3_fee
-            amc_4_5_cost = fee_calculation.amc_4_5_fee
-            
-            st.metric("Management Fee", f"£{fee_calculation.management_fee:,.2f}", 
+            # Use totals including VAT for display
+            fee_bd = breakdown.get('fee_breakdown', {})
+            upfront_tot = fee_bd.get('upfront_total', fee_bd.get('upfront', 0.0)) or 0.0
+            amc_1_3_tot = fee_bd.get('amc_1_3_total', fee_bd.get('amc_1_3', 0.0)) or 0.0
+            amc_4_5_tot = fee_bd.get('amc_4_5_total', fee_bd.get('amc_4_5', 0.0)) or 0.0
+            management_fee_incl_vat = (amc_1_3_tot or 0.0) + (amc_4_5_tot or 0.0)
+
+            st.metric("Management Fee (incl. VAT)", f"£{management_fee_incl_vat:,.2f}", 
                      help=f"AMC 1-3: {amc_1_3_rate:.1f}% | AMC 4-5: {amc_4_5_rate:.1f}%")
-            st.metric("Admin Fee", f"{upfront_rate:.1f}% - £{fee_calculation.admin_fee:,.2f}", 
+            st.metric("Admin Fee (incl. VAT)", f"{upfront_rate:.1f}% - £{upfront_tot:,.2f}", 
                      help="CC Set Up Costs")
-            st.metric("AMC Rate (Years 1-3)", f"{amc_1_3_rate:.1f}% - £{amc_1_3_cost:,.2f}", 
+            st.metric("AMC 1–3 (incl. VAT)", f"{amc_1_3_rate:.1f}% - £{amc_1_3_tot:,.2f}", 
                      help="Annual Management Charges for years 1-3")
-            st.metric("AMC Rate (Years 4-5)", f"{amc_4_5_rate:.1f}% - £{amc_4_5_cost:,.2f}", 
+            st.metric("AMC 4–5 (future, incl. VAT)", f"{amc_4_5_rate:.1f}% - £{amc_4_5_tot:,.2f}", 
                      help="Annual Management Charges for years 4-5")
             st.metric("Method", method_display)
+
 
             # Show investor-type specific inputs used by the calculator
             try:

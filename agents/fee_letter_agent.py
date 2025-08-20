@@ -570,9 +570,9 @@ class FeeLetterAgent(BaseAgent):
             # Get Excel path from config manager (preferred) or environment variable (fallback)
             excel_path = None
             try:
+                # Always instantiate a fresh ConfigManager to avoid stale path
                 from config_manager import ConfigManager
-                config_manager = ConfigManager()
-                excel_path = config_manager.get_excel_path()
+                excel_path = ConfigManager().get_excel_path()
             except Exception:
                 pass
             
@@ -603,8 +603,10 @@ class FeeLetterAgent(BaseAgent):
                         'Current Share Price': co_p.get('Current Share Price'),
                         'Share Class': co_p.get('Share Class') or 'Ordinary Share'
                     }
-                    # Override investment type from FeeSheet context
-                    is_net_investment = (fee_ctx.get('investment_type') == 'net')
+                    # Override investment type from FeeSheet context unless UI explicitly overrode it
+                    ui_overrode_type = bool(custom_fees and custom_fees.get('investment_type_override'))
+                    if not ui_overrode_type:
+                        is_net_investment = (fee_ctx.get('investment_type') == 'net')
                     # Prepare subscription/reference
                     subscription_ref = fee_ctx.get('subscription_reference') or ''
                     reference_preface = 'CC' if inv_data['Investor Type'].lower() == 'professional' else 'CS'
@@ -692,7 +694,7 @@ class FeeLetterAgent(BaseAgent):
             # Calculate fees using enhanced calculator with custom fees and investor type logic
             fee_calculation = None
             if FeeCalculator:
-                # Use per-investment rates from Excel when available (preferred). UI overrides are removed.
+                # Start from company data and enrich with Excel fee context
                 calc_company_data = comp_data.copy() if comp_data else {}
                 if used_excel:
                     # Pull CC Set up fee %, CC AMC %, CC Carry % from latest FeeSheet (already in payload)
@@ -712,12 +714,39 @@ class FeeLetterAgent(BaseAgent):
                         })
                     except Exception:
                         pass
-                # No else: we no longer accept UI overrides when Excel is in use
+                
+                # Apply UI overrides last so they take priority over Excel values
+                if custom_fees:
+                    try:
+                        if 'upfront_fee_pct' in custom_fees and custom_fees['upfront_fee_pct'] is not None:
+                            calc_company_data['Upfront Fee %'] = float(custom_fees['upfront_fee_pct'])
+                        if 'amc_1_3_pct' in custom_fees and custom_fees['amc_1_3_pct'] is not None:
+                            calc_company_data['AMC 1–3 %'] = float(custom_fees['amc_1_3_pct'])
+                        if 'amc_4_5_pct' in custom_fees and custom_fees['amc_4_5_pct'] is not None:
+                            calc_company_data['AMC 4–5 %'] = float(custom_fees['amc_4_5_pct'])
+                        if 'vat_rate' in custom_fees and custom_fees['vat_rate'] is not None:
+                            calc_company_data['vat_rate'] = float(custom_fees['vat_rate'])
+                        # Share price override affects preview/quantity, not calculator logic directly
+                        if 'share_price_override' in custom_fees and custom_fees['share_price_override'] is not None:
+                            try:
+                                sp_override = float(custom_fees['share_price_override'])
+                                if sp_override > 0:
+                                    comp_data['Current Share Price'] = sp_override
+                            except Exception:
+                                pass
+                        # Share class override
+                        if 'share_class_override' in custom_fees and custom_fees['share_class_override']:
+                            comp_data['Share Class'] = str(custom_fees['share_class_override']).strip()
+                    except Exception:
+                        pass
 
                 # Ensure investor type is passed for retail/professional logic
                 inv_data_mod = inv_data.copy()
                 if used_excel and inv_data.get('Investor Type'):
                     inv_data_mod['investor_type'] = str(inv_data.get('Investor Type')).lower()
+                # Investor type override from UI
+                if custom_fees and custom_fees.get('investor_type_override'):
+                    inv_data_mod['investor_type'] = str(custom_fees['investor_type_override']).lower()
                 # Investor type now comes from Excel Fund classification
 
                 fee_calculation = FeeCalculator.calc_breakdown(
@@ -747,7 +776,7 @@ class FeeLetterAgent(BaseAgent):
                 }
             
             # Generate the fee letter content
-            # Extract share price from updated schema (Current Share Price)
+            # Extract share price from updated schema (Current Share Price), honoring override if provided
             try:
                 sp_raw = comp_data.get('Current Share Price', 1.0)
                 # handle values like "0.28", 0.28, "£0.28", "28p"
@@ -759,6 +788,12 @@ class FeeLetterAgent(BaseAgent):
                     share_price = float(s)
                 else:
                     share_price = float(sp_raw)
+                # Explicit UI override (if any) already pushed to comp_data above; this ensures correctness
+                if custom_fees and custom_fees.get('share_price_override'):
+                    try:
+                        share_price = float(custom_fees['share_price_override'])
+                    except Exception:
+                        pass
             except Exception:
                 share_price = 1.0
             share_quantity = round(gross_investment / share_price, 4) if share_price else 0.0
@@ -801,7 +836,7 @@ class FeeLetterAgent(BaseAgent):
                     number_of_shares = f"{share_quantity:,.0f}"
                     share_type = comp_data.get('Share Class', 'Ordinary Share')
                     
-                    # Display percentages from Excel context (fallback to defaults if missing)
+                    # Display percentages with normalization: decimals (<=1) → percent
                     def pct_disp(v, default):
                         try:
                             if v is None:
@@ -810,10 +845,12 @@ class FeeLetterAgent(BaseAgent):
                             return fv * 100.0 if fv <= 1.0 else fv
                         except Exception:
                             return default
-                    upfront_fee_pct = pct_disp(fee_ctx.get('upfront_pct') if used_excel else None, 2.0)
-                    amc_1_3_pct = pct_disp(fee_ctx.get('amc_pct') if used_excel else None, 2.0)
-                    amc_4_5_pct = pct_disp(fee_ctx.get('amc_pct') if used_excel else None, 1.5)
-                    performance_fee_pct = pct_disp(fee_ctx.get('performance_pct') if used_excel else None, 20.0)
+                    applied_rates = fee_calculation.breakdown.get('applied_rates', {}) if fee_calculation else {}
+                    upfront_fee_pct = pct_disp(applied_rates.get('upfront_pct'), 2.0)
+                    amc_1_3_pct = pct_disp(applied_rates.get('amc_1_3_pct'), 2.0)
+                    amc_4_5_pct = pct_disp(applied_rates.get('amc_4_5_pct'), 1.5)
+                    # Performance not in applied_rates; normalize from Excel context
+                    performance_fee_pct = pct_disp((fee_ctx.get('performance_pct') if used_excel else None), 20.0)
 
                     # Pull values including VAT from enhanced calculation breakdown
                     fb = fee_calculation.breakdown.get('fee_breakdown', {}) if fee_calculation else {}
@@ -935,6 +972,54 @@ class FeeLetterAgent(BaseAgent):
                     "smart_summary": smart_summary,
                     "email_sent": email_sent
                 })
+
+            # Append audit row to FeeLetterAudit sheet if possible
+            try:
+                # Resolve configured Excel path
+                from config_manager import ConfigManager
+                excel_path_cfg = ConfigManager().get_excel_path()
+                # Fetch account/user info from Microsoft auth if available
+                account_name = ''
+                try:
+                    from microsoft_graph_auth_manager import get_auth_manager
+                    u = get_auth_manager().get_user_info() or {}
+                    account_name = u.get('mail') or u.get('userPrincipalName') or u.get('displayName') or ''
+                except Exception:
+                    pass
+                # Extract rates for audit (percent values)
+                applied_rates = fee_calculation.breakdown.get('applied_rates', {}) if fee_calculation else {}
+                def pct_disp(v, default):
+                    try:
+                        if v is None:
+                            return default
+                        fv = float(v)
+                        return fv * 100.0 if fv <= 1.0 else fv
+                    except Exception:
+                        return default
+
+                upfront_fee_pct = pct_disp(applied_rates.get('upfront_pct'), 2.0)
+                amc_pct = pct_disp(applied_rates.get('amc_1_3_pct'), 2.0)
+                carry_pct = pct_disp((fee_ctx.get('performance_pct') if used_excel else None), 20.0)
+
+                # Build audit row
+                audit_row = {
+                    'Account': account_name,
+                    'Custodian Client Ref': inv_data.get('Custodian Client Ref', ''),
+                    'Investor Name': investor_name,
+                    'Investor Email': to_email or '',
+                    'Set up fee %': upfront_fee_pct,
+                    'AMC %': amc_pct,
+                    'Carry %': carry_pct,
+                    'Amount Invested': gross_investment,
+                    'Total Fees': total_fees,
+                    'Gross/Net': investment_type_description,
+                    'Fund': (payload.get('fee_context', {}) or {}).get('Fund', ''),
+                    'Date Generated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+                if excel_path_cfg:
+                    _ = self._append_audit_row(excel_path_cfg, audit_row)
+            except Exception:
+                pass
             
             return {
                 "success": True,
@@ -1025,6 +1110,65 @@ class FeeLetterAgent(BaseAgent):
             summary += "\n\n⚠️ **Using default rates** - No fee data found in Excel for this investor"
         
         return summary
+
+    def _append_audit_row(self, excel_path: str, row: Dict[str, Any]) -> bool:
+        """Append a single audit row to a lightweight audit workbook near the main Excel file.
+        For performance, we write to '<dir>/FeeLetterAudit.xlsx' instead of the large source workbook.
+        Creates the file/sheet with headers if needed.
+        """
+        try:
+            from openpyxl import load_workbook
+            from openpyxl.utils import get_column_letter
+            from openpyxl import Workbook
+            from pathlib import Path
+        except Exception:
+            return False
+
+        columns = [
+            'Account', 'Custodian Client Ref', 'Investor Name', 'Investor Email',
+            'Set up fee %', 'AMC %', 'Carry %', 'Amount Invested', 'Total Fees',
+            'Gross/Net', 'Fund', 'Date Generated'
+        ]
+
+        try:
+            audit_path = Path(excel_path).with_name('FeeLetterAudit.xlsx')
+            if audit_path.exists():
+                wb = load_workbook(str(audit_path))
+            else:
+                wb = Workbook()
+                # Ensure a clean first sheet named FeeLetterAudit
+                ws0 = wb.active
+                ws0.title = 'FeeLetterAudit'
+            ws = wb['FeeLetterAudit'] if 'FeeLetterAudit' in wb.sheetnames else wb.create_sheet('FeeLetterAudit')
+            start_row = ws.max_row + 1 if ws.max_row >= 1 else 1
+            if ws.max_row < 1 or (ws.max_row == 1 and ws.cell(row=1, column=1).value is None):
+                # write headers
+                for idx, h in enumerate(columns, start=1):
+                    ws.cell(row=1, column=idx, value=h)
+                start_row = 2
+
+            # prepare values in column order
+            values = [row.get(col, '') for col in columns]
+            for idx, val in enumerate(values, start=1):
+                ws.cell(row=start_row, column=idx, value=val)
+
+            wb.save(str(audit_path))
+            return True
+        except Exception:
+            # Fallback to CSV append if Excel save fails (e.g., file locked)
+            try:
+                import csv
+                from pathlib import Path
+                csv_path = Path(excel_path).with_name('FeeLetterAudit.csv')
+                file_exists = csv_path.exists()
+                with open(csv_path, 'a', newline='', encoding='utf-8') as f:
+                    w = csv.DictWriter(f, fieldnames=columns)
+                    if not file_exists:
+                        w.writeheader()
+                    w.writerow({k: row.get(k, '') for k in columns})
+                return True
+            except Exception:
+                return False
     
     def get_disambiguation_candidates(self, name: str, candidates: List[Dict[str, Any]], 
                                     name_field: str = 'name') -> List[Dict[str, Any]]:
@@ -1242,6 +1386,7 @@ class FeeLetterAgent(BaseAgent):
         """Debug company search by listing available companies in Excel."""
         try:
             from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
+            import os, time
             
             # Get Excel file path from config manager
             try:
@@ -1263,7 +1408,14 @@ class FeeLetterAgent(BaseAgent):
                     "error": "No Excel file path configured. Please go to Settings to configure your Excel file."
                 }
             
-            # Initialize adapter and get company data
+            # Capture file mtime for verification
+            try:
+                mtime = os.path.getmtime(excel_file_path)
+                excel_mtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
+            except Exception:
+                excel_mtime = None
+
+            # Initialize adapter and get company data (fresh read)
             adapter = ExcelLocalThreeSheet(excel_file_path)
             
             # Get company data from the adapter
@@ -1293,6 +1445,7 @@ class FeeLetterAgent(BaseAgent):
                     "total_companies": len(unique_companies),
                     "company_names": unique_companies,
                     "excel_file": excel_file_path,
+                    "excel_mtime": excel_mtime,
                     "columns_found": list(company_data.columns),
                     "contains_dingus": any("dingus" in name.lower() for name in unique_companies),
                     "contains_pingus": any("pingus" in name.lower() for name in unique_companies)
@@ -1302,7 +1455,8 @@ class FeeLetterAgent(BaseAgent):
                     "total_companies": 0,
                     "company_names": [],
                     "error": "Could not access company data from Excel adapter",
-                    "excel_file": excel_file_path
+                    "excel_file": excel_file_path,
+                    "excel_mtime": excel_mtime
                 }
                 
         except Exception as e:

@@ -23,35 +23,35 @@
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install 'streamlit>=1.28.0'",
+        "message": "pip install streamlit>=1.28.0",
         "venv": "env"
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install 'pandas>=2.0.0' 'openpyxl>=3.1.0'",
+        "message": "pip install pandas>=2.0.0 openpyxl>=3.1.0",
         "venv": "env"
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install 'rapidfuzz>=3.5.0' 'jinja2>=3.1.0'",
+        "message": "pip install rapidfuzz>=3.5.0 jinja2>=3.1.0",
         "venv": "env"
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install 'msal>=1.24.0' 'requests>=2.31.0'",
+        "message": "pip install msal>=1.24.0 requests>=2.31.0",
         "venv": "env"
       }
     },
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install 'python-dotenv>=1.0.0'",
+        "message": "pip install python-dotenv>=1.0.0",
         "venv": "env"
       }
     },
@@ -64,7 +64,7 @@
     {
       "method": "shell.run", 
       "params": {
-        "message": "pip install langchain langchain-community || echo 'ℹ️ LangChain not available - AI chat features will be disabled'",
+        "message": "pip install langchain langchain-community 2>/dev/null || echo 'ℹ️ LangChain not available - AI chat features will be disabled'",
         "venv": "env"
       }
     },
@@ -77,21 +77,21 @@
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import streamlit; print('Streamlit installed successfully')\"",
+        "message": "python -c \"import streamlit; print('✅ Streamlit:', streamlit.__version__)\"",
         "venv": "env"
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import pandas; print('Pandas installed successfully')\"",
+        "message": "python -c \"import pandas; print('✅ Pandas:', pandas.__version__)\"",
         "venv": "env"
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "python -c \"import msal; print('MSAL installed successfully')\"",
+        "message": "python -c \"import msal; print('✅ MSAL:', msal.__version__)\"",
         "venv": "env"
       }
     },

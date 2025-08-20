@@ -404,6 +404,13 @@ class FeeCalculator:
             if company_field in company_data and company_data[company_field] is not None:
                 structure[structure_field] = float(company_data[company_field])
         
+        # Allow overriding VAT rate if provided by caller (e.g., UI override)
+        try:
+            if 'vat_rate' in company_data and company_data['vat_rate'] is not None:
+                structure['vat_rate'] = float(company_data['vat_rate'])
+        except Exception:
+            pass
+        
         return structure
     
     @classmethod
