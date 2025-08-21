@@ -144,6 +144,9 @@ class FeeLetterAgent(BaseAgent):
         gross_patterns = [r'\bgross\b', r'before\s+fees', r'excluding\s+fees', r'investment\s+amount', r'gross\s+investment']
         
         # Extract investment amount
+        print(f"DEBUG: Parsing prompt: '{prompt}'")
+        print(f"DEBUG: Amount patterns to try: {amount_patterns}")
+        
         for pattern in amount_patterns:
             match = re.search(pattern, prompt, re.IGNORECASE)
             if match:
@@ -161,6 +164,10 @@ class FeeLetterAgent(BaseAgent):
                 except ValueError:
                     print(f"DEBUG: Failed to parse '{amount_str}' as float")
                     continue
+        else:
+            print(f"DEBUG: No amount patterns matched the prompt")
+        
+        print(f"DEBUG: Final parsed amount: {result['amount']['value']}")
         
         # Extract investment type (net/gross) with confidence scoring
         net_score = sum(1 for pattern in net_patterns if re.search(pattern, prompt, re.IGNORECASE))
@@ -552,7 +559,12 @@ class FeeLetterAgent(BaseAgent):
             company_name = parse_result['company']['name']
             is_net_investment = parse_result['investment_type']['type'] == 'net'
             using_default_rates = False  # Initialize default rates flag
-
+            
+            print(f"DEBUG: After parsing - investor_name: {investor_name}")
+            print(f"DEBUG: After parsing - investment_amount: {investment_amount}")
+            print(f"DEBUG: After parsing - company_name: {company_name}")
+            print(f"DEBUG: After parsing - is_net_investment: {is_net_investment}")
+            
             # Apply explicit overrides from structured UI (if provided)
             if custom_fees:
                 if 'investor_name_override' in custom_fees and custom_fees['investor_name_override']:
