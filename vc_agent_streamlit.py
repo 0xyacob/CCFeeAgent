@@ -1869,13 +1869,12 @@ def render_specialized_fee_generation():
             )
             
             investment_amount = st.number_input(
-                "Investment Amount (£) *", 
-                min_value=1000, 
-                max_value=5000000, 
-                value=50000,
-                step=1000,
-                help="Total investment amount in British Pounds",
-                key="specialized_investment_amount"
+                "Investment Amount (£)",
+                min_value=0.0,
+                value=st.session_state.get('specialized_investment_amount', 0.0),
+                step=0.01,
+                format="%.2f",
+                key='specialized_investment_amount'
             )
         
         with col2:
@@ -1897,42 +1896,50 @@ def render_specialized_fee_generation():
         overrides = {}
         with st.expander("⚙️ Override variables (optional)", expanded=False):
             st.caption("These values will override Excel for this letter only.")
+            
+            # First row - 3 columns with equal width
             col_ov1, col_ov2, col_ov3 = st.columns(3)
             with col_ov1:
-                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0, 
-                                           value=st.session_state.get('ov_upfront', 0.0), step=0.1, key='ov_upfront')
-                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0, 
-                                       value=st.session_state.get('ov_vat', 0.0), step=0.5, key='ov_vat')
+                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0,
+                                             value=st.session_state.get('ov_upfront', 0.0), step=0.1, key='ov_upfront')
             with col_ov2:
-                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0, 
-                                          value=st.session_state.get('ov_amc13', 0.0), step=0.1, key='ov_amc13')
-                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0, 
-                                         value=st.session_state.get('ov_share', 0.0), step=0.01, key='ov_share')
+                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0,
+                                           value=st.session_state.get('ov_amc13', 0.0), step=0.1, key='ov_amc13')
             with col_ov3:
-                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0, 
-                                          value=st.session_state.get('ov_amc45', 0.0), step=0.1, key='ov_amc45')
-                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"], 
-                                     index=st.session_state.get('ov_type_index', 0), key='ov_type')
+                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0,
+                                           value=st.session_state.get('ov_amc45', 0.0), step=0.1, key='ov_amc45')
             
-            # Additional overrides (investor type and share class)
-            col_ov4, col_ov5 = st.columns(2)
+            # Second row - 3 columns with equal width
+            col_ov4, col_ov5, col_ov6 = st.columns(3)
             with col_ov4:
+                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0,
+                                         value=st.session_state.get('ov_vat', 0.0), step=0.5, key='ov_vat')
+            with col_ov5:
+                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0,
+                                           value=st.session_state.get('ov_share', 0.0), step=0.01, key='ov_share')
+            with col_ov6:
+                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"],
+                                       index=st.session_state.get('ov_type_index', 0), key='ov_type')
+            
+            # Third row - 2 columns with equal width
+            col_ov7, col_ov8 = st.columns(2)
+            with col_ov7:
                 ov_investor_type = st.selectbox(
-                    "Investor Type", ["No override", "Professional", "Retail"], 
+                    "Investor Type", ["No override", "Professional", "Retail"],
                     index=st.session_state.get('ov_investor_type_index', 0), key='ov_investor_type',
                     help="Override investor classification"
                 )
-            with col_ov5:
+            with col_ov8:
                 ov_share_class = st.text_input(
-                    "Share Class Override", 
-                    value=st.session_state.get('ov_share_class', ''), 
+                    "Share Class Override",
+                    value=st.session_state.get('ov_share_class', ''),
                     placeholder="e.g., A Ordinary", key='ov_share_class',
                     help="Override share class name"
                 )
             
-            # Number of shares override
-            col_ov6, col_ov7 = st.columns(2)
-            with col_ov6:
+            # Fourth row - 2 columns with equal width
+            col_ov9, col_ov10 = st.columns(2)
+            with col_ov9:
                 ov_shares_override = st.number_input(
                     "Number of Shares Override",
                     min_value=0,
@@ -1940,7 +1947,7 @@ def render_specialized_fee_generation():
                     key='ov_shares_override',
                     help="Override calculated number of shares"
                 )
-            with col_ov7:
+            with col_ov10:
                 st.caption("Leave as 0 to use calculated value")
         
         # Build overrides dictionary from session state values
@@ -2135,6 +2142,13 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
         **Share Quantity:** {preview_data.get('share_quantity', 0):,.2f}  
         **Recipient Email:** {result.get('to_email', 'N/A')}  
         """)
+        
+        # Add share quantity recommendation if decimals exist
+        if preview_data.get('shares_have_decimals', False):
+            exact_qty = preview_data.get('share_quantity', 0)
+            rounded_qty = preview_data.get('share_quantity_rounded', round(exact_qty))
+            st.info(f"📊 **Share Quantity Recommendation:** {rounded_qty:,} shares (rounded from {exact_qty:,.2f} for ease of allocation)")
+        
         if preview_data.get('reference'):
             st.markdown(f"**Reference:** {preview_data['reference']}")
         
@@ -2155,7 +2169,9 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
             # Add share quantity information if available
             preview_data = result.get('preview_data', {})
             if preview_data.get('shares_have_decimals'):
-                shares_info = f"\n\nNote: Share quantity {preview_data.get('share_quantity_exact', 0):,.2f} has been rounded to {preview_data.get('share_quantity_rounded', 0):,} for ease of allocation."
+                exact_qty = preview_data.get('share_quantity_exact', 0)
+                rounded_qty = preview_data.get('share_quantity_rounded', round(exact_qty))
+                shares_info = f"\n\n📊 **Share Quantity Note:** The calculated share quantity is {exact_qty:,.2f} shares. For ease of allocation, we recommend rounding to {rounded_qty:,} shares."
                 readable_content += shares_info
             
             st.text_area(
