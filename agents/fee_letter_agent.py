@@ -878,15 +878,15 @@ class FeeLetterAgent(BaseAgent):
                 investor_last_name = inv_data.get('Last Name', investor_name.split()[-1] if investor_name else '')
                 investment_type = investment_type_description.lower()
                 
-                # For gross investments, show the amount that actually goes to the company (after fees)
+                # For gross investments, show the original investment amount (with decimals)
                 # For net investments, show the original amount (fees are deducted)
                 if is_net_investment:
                     # Net: fees deducted, so show original amount
                     display_amount = investment_amount
                     number_of_shares = f"{share_quantity:,.0f}"
                 else:
-                    # Gross: fees added, so show amount after fees go to company
-                    display_amount = gross_investment
+                    # Gross: show the original investment amount (not the gross investment)
+                    display_amount = investment_amount
                     number_of_shares = f"{share_quantity:,.0f}"
                 
                 # Apply shares override if specified
@@ -975,7 +975,9 @@ class FeeLetterAgent(BaseAgent):
                     "share_quantity": round(share_quantity, 2),
                     "share_quantity_exact": round(share_quantity, 2),
                     "share_quantity_rounded": round(share_quantity),
-                    "shares_have_decimals": (share_quantity % 1) != 0
+                    "shares_have_decimals": (share_quantity % 1) != 0,
+                    # Add share quantity recommendation text
+                    "share_quantity_recommendation": f"Recommended: {round(share_quantity):,} shares (rounded from {share_quantity:,.2f} for ease of allocation)" if (share_quantity % 1) != 0 else f"{round(share_quantity):,} shares"
                 })
                 
                 # Render the template

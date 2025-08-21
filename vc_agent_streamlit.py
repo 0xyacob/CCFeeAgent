@@ -2211,9 +2211,9 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
         
         # Add share quantity recommendation if decimals exist
         if preview_data.get('shares_have_decimals', False):
-            exact_qty = preview_data.get('share_quantity', 0)
-            rounded_qty = preview_data.get('share_quantity_rounded', round(exact_qty))
-            st.info(f"📊 **Share Quantity Recommendation:** {rounded_qty:,} shares (rounded from {exact_qty:,.2f} for ease of allocation)")
+            st.info(f"📊 **{preview_data.get('share_quantity_recommendation', '')}")
+        elif preview_data.get('share_quantity_recommendation'):
+            st.info(f"📊 **{preview_data.get('share_quantity_recommendation', '')}")
         
         if preview_data.get('reference'):
             st.markdown(f"**Reference:** {preview_data['reference']}")
