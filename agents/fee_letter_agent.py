@@ -127,6 +127,8 @@ class FeeLetterAgent(BaseAgent):
         
         # Enhanced patterns for better extraction - prioritize full numbers FIRST
         amount_patterns = [
+            # Most specific pattern for our exact format: "for {amount} into"
+            r'for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s+into',
             # Prioritize decimal-aware patterns FIRST to preserve cents/pence
             r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:into|in|for)',
             r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
@@ -146,15 +148,18 @@ class FeeLetterAgent(BaseAgent):
             match = re.search(pattern, prompt, re.IGNORECASE)
             if match:
                 amount_str = match.group(1).replace(',', '')
+                print(f"DEBUG: Pattern '{pattern}' matched '{match.group(0)}', captured '{amount_str}'")
                 try:
                     amount = float(amount_str)
                     # Handle 'k' suffix
                     if 'k' in match.group(0).lower() or 'thousand' in match.group(0).lower():
                         amount *= 1000
+                    print(f"DEBUG: Parsed amount: {amount}")
                     result['amount']['value'] = amount
                     result['amount']['confidence'] = 0.9
                     break
                 except ValueError:
+                    print(f"DEBUG: Failed to parse '{amount_str}' as float")
                     continue
         
         # Extract investment type (net/gross) with confidence scoring
