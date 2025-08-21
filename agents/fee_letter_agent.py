@@ -248,10 +248,13 @@ class FeeLetterAgent(BaseAgent):
                 r"(?i)generate fee letter for (.+?) investing £?([\d,]+\.?\d*) (?:net|gross)?\s*in (.+)",
                 r"(?i)(.+?) £?([\d,]+\.?\d*) (.+)"
             ]
-            for pat in fee_patterns:
+            print(f"DEBUG: Trying fallback patterns because missing: {missing_entities}")
+            for i, pat in enumerate(fee_patterns):
                 m = re.search(pat, prompt.strip(), re.IGNORECASE)
                 if m:
                     inv, amt, comp = m.group(1).strip(), m.group(2).replace(',', ''), m.group(3).strip()
+                    print(f"DEBUG: Fallback pattern {i} matched: '{pat}'")
+                    print(f"DEBUG: Captured: investor='{inv}', amount='{amt}', company='{comp}'")
                     # Populate investor
                     if not result['investor']['name']:
                         result['investor']['name'] = inv
@@ -261,7 +264,9 @@ class FeeLetterAgent(BaseAgent):
                         try:
                             result['amount']['value'] = float(amt)
                             result['amount']['confidence'] = 0.9
-                        except Exception:
+                            print(f"DEBUG: Set amount to: {result['amount']['value']}")
+                        except Exception as e:
+                            print(f"DEBUG: Failed to parse amount '{amt}': {e}")
                             pass
                     # Populate company
                     if not result['company']['name']:
