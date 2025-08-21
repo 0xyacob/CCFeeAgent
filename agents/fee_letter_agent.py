@@ -959,8 +959,6 @@ class FeeLetterAgent(BaseAgent):
                     email_content = email_content.replace("GBP", "&pound;")
                 else:
                     email_content = rendered
-                else:
-                    email_content = f"Template not found"
                     
             except Exception as template_error:
                 email_content = f"Error generating template: {str(template_error)}"
