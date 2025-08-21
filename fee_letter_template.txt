@@ -1,15 +1,15 @@
 Dear {{ salutation }} {{ investor_last_name }}
 
-Thank you for proposing a {{ investment_type }} investment of £{{ investment_amount }} in {{ company_name }} - representing {{ number_of_shares }} {{ share_type }} at £{{ share_price }} per share. We're pleased to confirm this amount.
+Thank you for proposing a {{ investment_type }} investment of GBP{{ investment_amount }} in {{ company_name }} - representing {{ number_of_shares }} {{ share_type }} at GBP{{ share_price }} per share. We're pleased to confirm this amount.
 
 We set out below the bank account details and fee arrangements. Do please let us know when you have had the time to action this payment so that we may confirm receipt.
 
-  • Upfront (to be added to your investment amount): {{ upfront_fee_pct }}% (plus VAT) - £{{ upfront_fee_value }} (to cover all aspects of administration including regulatory compliance for the holding period expected to be not less than three years, calculated on the gross amount)
-  • Annual management charge: {{ amc_1_3_pct }}% (plus VAT) payable in advance for the first three years - £{{ amc_1_3_value }}
-  • A further two years of annual management charge at {{ amc_4_5_pct }}% (plus VAT) will be accruable (i.e. rolled up and paid upon exit) after this time.
-  • Performance fee: {{ performance_fee_pct }}% (payable only on successful exit, after adding back all fees you have paid in relation to your investment, and calculated as a % of profits on the investment)
+  * Upfront (to be added to your investment amount): {{ upfront_fee_pct }}% (plus VAT) - GBP{{ upfront_fee_value }} (to cover all aspects of administration including regulatory compliance for the holding period expected to be not less than three years, calculated on the gross amount)
+  * Annual management charge: {{ amc_1_3_pct }}% (plus VAT) payable in advance for the first three years - GBP{{ amc_1_3_value }}
+  * A further two years of annual management charge at {{ amc_4_5_pct }}% (plus VAT) will be accruable (i.e. rolled up and paid upon exit) after this time.
+  * Performance fee: {{ performance_fee_pct }}% (payable only on successful exit, after adding back all fees you have paid in relation to your investment, and calculated as a % of profits on the investment)
 
-<b><u>Total transfer £{{ total_transfer }} including fees.</u></b>
+**Total transfer GBP{{ total_transfer }} including fees.**
 
 Account Name: Apex Unitas Limited
 Bank: RBS
