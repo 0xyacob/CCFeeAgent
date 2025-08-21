@@ -14,6 +14,7 @@ from typing import Dict, List, Any
 import pandas as pd
 import os
 from pathlib import Path
+import re
 
 # Import the conversational agent (RAG disabled due to Keras/Transformers conflicts)
 try:
@@ -1928,6 +1929,19 @@ def render_specialized_fee_generation():
                     placeholder="e.g., A Ordinary", key='ov_share_class',
                     help="Override share class name"
                 )
+            
+            # Number of shares override
+            col_ov6, col_ov7 = st.columns(2)
+            with col_ov6:
+                ov_shares_override = st.number_input(
+                    "Number of Shares Override",
+                    min_value=0,
+                    value=st.session_state.get('ov_shares_override', 0),
+                    key='ov_shares_override',
+                    help="Override calculated number of shares"
+                )
+            with col_ov7:
+                st.caption("Leave as 0 to use calculated value")
         
         # Build overrides dictionary from session state values
         if st.session_state.get('ov_upfront', 0.0) > 0:
@@ -1946,6 +1960,10 @@ def render_specialized_fee_generation():
             overrides['investor_type_override'] = st.session_state.get('ov_investor_type', 'No override').lower()
         if st.session_state.get('ov_share_class', '').strip():
             overrides['share_class_override'] = st.session_state.get('ov_share_class', '').strip()
+        
+        # Add shares override if specified
+        if st.session_state.get('ov_shares_override', 0) > 0:
+            overrides['shares_override'] = int(st.session_state.get('ov_shares_override', 0))
         
         # Form submission
         st.markdown("---")
@@ -1984,7 +2002,8 @@ def render_specialized_fee_generation():
             "ov_share",
             "ov_type",
             "ov_investor_type",
-            "ov_share_class"
+            "ov_share_class",
+            "ov_shares_override"
         ]
         
         for key in keys_to_clear:
@@ -2124,9 +2143,24 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
         # Show actual fee letter text
         st.markdown("### Actual Fee Letter Text")
         if result.get('email_content'):
+            # Convert HTML to readable text for preview
+            email_content = result['email_content']
+            
+            # Remove HTML tags and convert to readable text
+            readable_content = re.sub(r'<[^>]+>', '', email_content)
+            readable_content = re.sub(r'&pound;', '£', readable_content)
+            readable_content = re.sub(r'&nbsp;', ' ', readable_content)
+            readable_content = re.sub(r'\s+', ' ', readable_content).strip()
+            
+            # Add share quantity information if available
+            preview_data = result.get('preview_data', {})
+            if preview_data.get('shares_have_decimals'):
+                shares_info = f"\n\nNote: Share quantity {preview_data.get('share_quantity_exact', 0):,.2f} has been rounded to {preview_data.get('share_quantity_rounded', 0):,} for ease of allocation."
+                readable_content += shares_info
+            
             st.text_area(
                 "Fee Letter Content (as it will appear):",
-                value=result['email_content'],
+                value=readable_content,
                 height=400,
                 disabled=True,
                 help="This is the exact text that will be sent in the fee letter"

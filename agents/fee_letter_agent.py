@@ -633,7 +633,8 @@ class FeeLetterAgent(BaseAgent):
                     # Override investment type from FeeSheet context unless UI explicitly overrode it
                     ui_overrode_type = bool(custom_fees and custom_fees.get('investment_type_override'))
                     if not ui_overrode_type:
-                        is_net_investment = (fee_ctx.get('investment_type') == 'net')
+                        # Fix: Excel 'net' means fees are deducted, so it's a NET investment
+                        is_net_investment = (fee_ctx.get('investment_type', '').lower() == 'net')
                     # Prepare subscription/reference
                     subscription_ref = fee_ctx.get('subscription_reference') or ''
                     reference_preface = 'CC' if inv_data['Investor Type'].lower() == 'professional' else 'CS'
@@ -836,7 +837,11 @@ class FeeLetterAgent(BaseAgent):
                 "investment_type": investment_type_description,
                 "calculation_note": calculation_note,
                 "validation_warnings": [],  # No warnings - clean interface
-                "input_amount": investment_amount
+                "input_amount": investment_amount,
+                # Add share quantity info for display
+                "share_quantity_exact": share_quantity,
+                "share_quantity_rounded": round(share_quantity),
+                "shares_have_decimals": (share_quantity % 1) != 0
             }
             
             # Generate smart summary
@@ -872,7 +877,32 @@ class FeeLetterAgent(BaseAgent):
                 salutation = inv_data.get('Salutation', 'Dear')
                 investor_last_name = inv_data.get('Last Name', investor_name.split()[-1] if investor_name else '')
                 investment_type = investment_type_description.lower()
-                number_of_shares = f"{share_quantity:,.0f}"
+                
+                # For gross investments, show the amount that actually goes to the company (after fees)
+                # For net investments, show the original amount (fees are deducted)
+                if is_net_investment:
+                    # Net: fees deducted, so show original amount
+                    display_amount = investment_amount
+                    number_of_shares = f"{share_quantity:,.0f}"
+                else:
+                    # Gross: fees added, so show amount after fees go to company
+                    display_amount = gross_investment
+                    number_of_shares = f"{share_quantity:,.0f}"
+                
+                # Apply shares override if specified
+                if custom_fees and custom_fees.get('shares_override'):
+                    try:
+                        override_shares = int(custom_fees['shares_override'])
+                        if override_shares > 0:
+                            number_of_shares = f"{override_shares:,}"
+                            # Update preview data to reflect override
+                            preview_data['share_quantity'] = override_shares
+                            preview_data['share_quantity_exact'] = override_shares
+                            preview_data['share_quantity_rounded'] = override_shares
+                            preview_data['shares_have_decimals'] = False
+                    except Exception:
+                        pass  # Keep original calculation if override fails
+                
                 share_type = comp_data.get('Share Class', 'Ordinary Share')
 
                 # Display percentages with normalization: decimals (<=1) → percent
@@ -944,7 +974,7 @@ class FeeLetterAgent(BaseAgent):
                     salutation=salutation,
                     investor_last_name=investor_last_name,
                     investment_type=investment_type,
-                    investment_amount=f"{investment_amount:,.0f}",
+                    investment_amount=f"{display_amount:,.0f}",
                     company_name=company_name,
                     number_of_shares=number_of_shares,
                     share_type=share_type,
