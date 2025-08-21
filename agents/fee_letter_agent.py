@@ -826,24 +826,6 @@ class FeeLetterAgent(BaseAgent):
                 share_price = 1.0
             share_quantity = round(gross_investment / share_price, 4) if share_price else 0.0
             
-            # Create fee letter preview
-            preview_data = {
-                "investor_name": investor_name,
-                "company_name": company_name,
-                "gross_investment": round(gross_investment, 2),  # Ensure 2 decimal places
-                "total_fees": round(total_fees, 2),  # Ensure 2 decimal places
-                "total_transfer": round(total_transfer_correct, 2),  # Ensure 2 decimal places
-                "share_quantity": round(share_quantity, 2),  # Ensure 2 decimal places
-                "investment_type": investment_type_description,
-                "calculation_note": calculation_note,
-                "validation_warnings": [],
-                "input_amount": round(investment_amount, 2),  # Ensure 2 decimal places
-                # Add share quantity info for display
-                "share_quantity_exact": round(share_quantity, 2),
-                "share_quantity_rounded": round(share_quantity),
-                "shares_have_decimals": (share_quantity % 1) != 0
-            }
-            
             # Generate smart summary
             smart_summary = self._generate_smart_summary(
                 investor_name, company_name, investment_amount, 
@@ -969,6 +951,24 @@ class FeeLetterAgent(BaseAgent):
                 # Expose reference_full to preview_data for UI verification
                 preview_data['reference'] = reference_full or ''
 
+                # NOW create fee letter preview after all variables are defined
+                preview_data = {
+                    "investor_name": investor_name,
+                    "company_name": company_name,
+                    "gross_investment": round(gross_investment, 2),  # Ensure 2 decimal places
+                    "total_fees": round(total_fees, 2),  # Ensure 2 decimal places
+                    "total_transfer": round(total_transfer_correct, 2),  # Ensure 2 decimal places
+                    "share_quantity": round(share_quantity, 2),  # Ensure 2 decimal places
+                    "investment_type": investment_type_description,
+                    "calculation_note": calculation_note,
+                    "validation_warnings": [],
+                    "input_amount": round(investment_amount, 2),  # Ensure 2 decimal places
+                    # Add share quantity info for display
+                    "share_quantity_exact": round(share_quantity, 2),
+                    "share_quantity_rounded": round(share_quantity),
+                    "shares_have_decimals": (share_quantity % 1) != 0
+                }
+                
                 # Render the template
                 rendered = template.render(
                     salutation=salutation,
@@ -1007,7 +1007,6 @@ class FeeLetterAgent(BaseAgent):
                     email_content = email_content.replace("GBP", "&pound;")
                 else:
                     email_content = rendered
-                    
             except Exception as template_error:
                 email_content = f"Error generating template: {str(template_error)}"
             
