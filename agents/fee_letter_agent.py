@@ -971,6 +971,7 @@ class FeeLetterAgent(BaseAgent):
 
                 # Update preview_data with final calculated values
                 preview_data.update({
+                    "gross_investment": round(display_amount, 2),
                     "total_transfer": round(total_transfer_correct, 2),
                     "share_quantity": round(share_quantity, 2),
                     "share_quantity_exact": round(share_quantity, 2),

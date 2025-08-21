@@ -1047,8 +1047,10 @@ def render_fee_letter_dashboard():
                     )
                     investment_amount = st.number_input(
                         "Investment Amount (£)", 
-                        min_value=1000, 
-                        max_value=1000000, 
+                        min_value=0.0, 
+                        value=float(st.session_state.get("input_investment_amount", 0.0)) if isinstance(st.session_state.get("input_investment_amount", 0.0), (int, float)) else 0.0,
+                        step=0.01,
+                        format="%.2f",
                         key="input_investment_amount"
                     )
                     investment_type = st.selectbox(
