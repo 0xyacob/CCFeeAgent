@@ -819,15 +819,27 @@ class FeeLetterAgent(BaseAgent):
                 validation_result, fee_calculation, using_default_rates
             )
             
-            # Generate the actual fee letter content using Jinja2 template
+            # Generate the actual fee letter content using Jinja2 template (HTML preferred)
             try:
                 # Load and render the fee letter template
-                template_path = "fee_letter_template.txt"
-                if os.path.exists(template_path):
-                    with open(template_path, 'r') as f:
+                html_template_path = "fee_letter_template.html"
+                txt_template_path = "fee_letter_template.txt"
+                template_content = None
+                is_html_template = False
+                if os.path.exists(html_template_path):
+                    with open(html_template_path, 'r', encoding='utf-8') as f:
                         template_content = f.read()
-                    
-                    template = Template(template_content)
+                        is_html_template = True
+                elif os.path.exists(txt_template_path):
+                    with open(txt_template_path, 'r', encoding='utf-8') as f:
+                        template_content = f.read()
+                        is_html_template = False
+                else:
+                    email_content = f"Template file not found (searched: {html_template_path}, {txt_template_path})"
+                    is_html_template = True  # still treat as html for downstream
+                    template_content = "<p>Template missing.</p>"
+                
+                template = Template(template_content)
                     
                     # Prepare template variables with CORRECT fee calculations
                     salutation = inv_data.get('Salutation', 'Dear')
@@ -900,7 +912,7 @@ class FeeLetterAgent(BaseAgent):
                     preview_data['reference'] = reference_full or ''
                     
                     # Render the template
-                    email_content = template.render(
+                    rendered = template.render(
                         salutation=salutation,
                         investor_last_name=investor_last_name,
                         investment_type=investment_type,
@@ -918,8 +930,27 @@ class FeeLetterAgent(BaseAgent):
                         total_transfer=total_transfer_str,
                          reference_full=reference_full
                     )
+                    
+                    # If we rendered the legacy TXT template, convert to simple HTML for email clients
+                    if not is_html_template:
+                        # Convert simple markers to HTML-safe content
+                        import html as _html
+                        safe = _html.escape(rendered)
+                        safe = safe.replace("\n\n", "</p><p>")
+                        safe = safe.replace("\n  * ", "</p><ul><li>")
+                        safe = safe.replace("\n* ", "</p><ul><li>")
+                        safe = safe.replace("\n  - ", "</li><li>")
+                        # Close any open list at end
+                        if "<ul><li>" in safe:
+                            if not safe.endswith("</li></ul>"):
+                                safe = safe + "</li></ul>"
+                        email_content = f"<p>{safe}</p>"
+                        # Restore GBP symbol if author used GBP prefix
+                        email_content = email_content.replace("GBP", "&pound;")
+                    else:
+                        email_content = rendered
                 else:
-                    email_content = f"Template file {template_path} not found"
+                    email_content = f"Template not found"
                     
             except Exception as template_error:
                 email_content = f"Error generating template: {str(template_error)}"

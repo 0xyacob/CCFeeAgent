@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fee Letter</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1f2937; line-height: 1.5; }
+    p { margin: 0 0 12px 0; }
+    ul { margin: 0 0 12px 24px; padding: 0; }
+    li { margin: 0 0 8px 0; }
+    .total { font-weight: bold; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <p>Dear {{ salutation }} {{ investor_last_name }}</p>
+
+  <p>Thank you for proposing a {{ investment_type }} investment of &pound;{{ investment_amount }} in {{ company_name }} - representing {{ number_of_shares }} {{ share_type }} at &pound;{{ share_price }} per share. We're pleased to confirm this amount.</p>
+
+  <p>We set out below the bank account details and fee arrangements. Do please let us know when you have had the time to action this payment so that we may confirm receipt.</p>
+
+  <ul>
+    <li>Upfront (to be added to your investment amount): {{ upfront_fee_pct }}% (plus VAT) - &pound;{{ upfront_fee_value }} (to cover all aspects of administration including regulatory compliance for the holding period expected to be not less than three years, calculated on the gross amount)</li>
+    <li>Annual management charge: {{ amc_1_3_pct }}% (plus VAT) payable in advance for the first three years - &pound;{{ amc_1_3_value }}</li>
+    <li>A further two years of annual management charge at {{ amc_4_5_pct }}% (plus VAT) will be accruable (i.e. rolled up and paid upon exit) after this time.</li>
+    <li>Performance fee: {{ performance_fee_pct }}% (payable only on successful exit, after adding back all fees you have paid in relation to your investment, and calculated as a % of profits on the investment)</li>
+  </ul>
+
+  <p class="total">Total transfer &pound;{{ total_transfer }} including fees.</p>
+
+  <p>Account Name: Apex Unitas Limited<br/>
+  Bank: RBS<br/>
+  Account Number: 00654737<br/>
+  Sort Code: 16-01-09<br/>
+  Ref: {{ reference_full }}</p>
+
+  <p>For security reasons we strongly recommend that you give us a call on the main office number (020 7529 1350) to confirm the bank details over the phone before any payment is completed.</p>
+
+  <p>Warmest regards</p>
+</body>
+</html>
