@@ -2111,6 +2111,9 @@ def render_specialized_fee_generation():
                 print(f"DEBUG STREAMLIT: Sending prompt: '{prompt}'")
                 print(f"DEBUG STREAMLIT: investment_amount type: {type(investment_amount)}, value: {investment_amount}")
                 
+                # Show debug info in UI
+                st.info(f"🔍 **Debug Info:** Sending amount: {investment_amount} (type: {type(investment_amount).__name__})")
+                
                 # Use enhanced agent with configured Excel path
                 fee_agent = FeeLetterAgent()
                 
@@ -2129,6 +2132,12 @@ def render_specialized_fee_generation():
                 
                 if result["success"]:
                     st.success(result['message'].replace("✅ ", ""))
+                    
+                    # Debug: Show parsed data in UI
+                    if result.get('preview_data'):
+                        preview = result['preview_data']
+                        st.info(f"🔍 **Debug - Parsed Amount:** {preview.get('input_amount', 'N/A')} → {preview.get('gross_investment', 'N/A')}")
+                    
                     # Persist preview so it stays after reruns
                     st.session_state['last_fee_preview'] = result
                     
