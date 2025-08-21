@@ -2107,6 +2107,10 @@ def render_specialized_fee_generation():
                 # Create prompt (investment type will be determined from Excel)
                 prompt = f"create a fee letter for {investor_name} for {investment_amount} into {company_name}"
                 
+                # Debug: Show what we're sending
+                print(f"DEBUG STREAMLIT: Sending prompt: '{prompt}'")
+                print(f"DEBUG STREAMLIT: investment_amount type: {type(investment_amount)}, value: {investment_amount}")
+                
                 # Use enhanced agent with configured Excel path
                 fee_agent = FeeLetterAgent()
                 
@@ -2117,6 +2121,11 @@ def render_specialized_fee_generation():
                 
                 custom_fees = overrides if overrides else None
                 result = fee_agent.execute_enhanced(prompt, custom_fees=custom_fees)
+                
+                # Debug: Show what we received
+                print(f"DEBUG STREAMLIT: Received result: {result}")
+                if result.get("success"):
+                    print(f"DEBUG STREAMLIT: Preview data: {result.get('preview_data', {})}")
                 
                 if result["success"]:
                     st.success(result['message'].replace("✅ ", ""))
