@@ -1095,11 +1095,17 @@ def render_fee_letter_dashboard():
                 st.session_state.input_investment_type = investment_type
                 st.session_state.input_preview_only = preview_only
                 
-                prompt = f"create a fee letter for {investor_name} for {investment_amount} {investment_type.lower()} into {company_name}"
+                # Ensure investment amount maintains decimal precision
+                investment_amount_float = float(investment_amount)
                 
                 with st.spinner("🔄 Generating fee letter..."):
-                    # Use enhanced generation
-                    result = fee_agent.execute_enhanced(prompt)
+                    # Use enhanced generation with custom fees and proper decimal handling
+                    result = fee_agent.execute_enhanced(
+                        investor_name=investor_name,
+                        company_name=company_name,
+                        investment_amount=investment_amount_float,  # Pass as float to maintain decimals
+                        custom_fees=overrides
+                    )
                     
                     if result["success"]:
                         st.success(result["message"])
@@ -1897,49 +1903,111 @@ def render_specialized_fee_generation():
         with st.expander("⚙️ Override variables (optional)", expanded=False):
             st.caption("These values will override Excel for this letter only.")
             
-            # First row - 3 columns with equal width
-            col_ov1, col_ov2, col_ov3 = st.columns(3)
-            with col_ov1:
-                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0,
-                                             value=st.session_state.get('ov_upfront', 0.0), step=0.1, key='ov_upfront')
-            with col_ov2:
-                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0,
-                                           value=st.session_state.get('ov_amc13', 0.0), step=0.1, key='ov_amc13')
-            with col_ov3:
-                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0,
-                                           value=st.session_state.get('ov_amc45', 0.0), step=0.1, key='ov_amc45')
+            # Create a clean 3x3 grid layout
+            st.markdown("""
+            <style>
+            .override-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            .override-item {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .override-item label {
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+                color: #1f77b4;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             
-            # Second row - 3 columns with equal width
-            col_ov4, col_ov5, col_ov6 = st.columns(3)
-            with col_ov4:
-                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0,
-                                         value=st.session_state.get('ov_vat', 0.0), step=0.5, key='ov_vat')
-            with col_ov5:
-                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0,
-                                           value=st.session_state.get('ov_share', 0.0), step=0.01, key='ov_share')
-            with col_ov6:
-                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"],
-                                       index=st.session_state.get('ov_type_index', 0), key='ov_type')
+            # Row 1: Percentage-based overrides
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                ov_upfront = st.number_input(
+                    "Setup Fee %", 
+                    min_value=0.0, 
+                    max_value=10.0,
+                    value=st.session_state.get('ov_upfront', 0.0), 
+                    step=0.1, 
+                    key='ov_upfront',
+                    help="Setup fee percentage"
+                )
+            with col2:
+                ov_amc13 = st.number_input(
+                    "AMC 1–3 % (per year)", 
+                    min_value=0.0, 
+                    max_value=10.0,
+                    value=st.session_state.get('ov_amc13', 0.0), 
+                    step=0.1, 
+                    key='ov_amc13',
+                    help="Annual management charge for years 1-3"
+                )
+            with col3:
+                ov_amc45 = st.number_input(
+                    "AMC 4–5 % (per year)", 
+                    min_value=0.0, 
+                    max_value=10.0,
+                    value=st.session_state.get('ov_amc45', 0.0), 
+                    step=0.1, 
+                    key='ov_amc45',
+                    help="Annual management charge for years 4-5"
+                )
             
-            # Third row - 2 columns with equal width
-            col_ov7, col_ov8 = st.columns(2)
-            with col_ov7:
+            # Row 2: Amount and rate overrides
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                ov_vat = st.number_input(
+                    "VAT %", 
+                    min_value=0.0, 
+                    max_value=25.0,
+                    value=st.session_state.get('ov_vat', 0.0), 
+                    step=0.5, 
+                    key='ov_vat',
+                    help="VAT percentage"
+                )
+            with col5:
+                ov_share = st.number_input(
+                    "Share Price (£)", 
+                    min_value=0.0, 
+                    max_value=1000.0,
+                    value=st.session_state.get('ov_share', 0.0), 
+                    step=0.01, 
+                    key='ov_share',
+                    help="Share price in pounds"
+                )
+            with col6:
+                ov_type = st.selectbox(
+                    "Investment Type", 
+                    ["No override", "Gross", "Net"],
+                    index=st.session_state.get('ov_type_index', 0), 
+                    key='ov_type',
+                    help="Override investment type"
+                )
+            
+            # Row 3: Additional overrides
+            col7, col8, col9 = st.columns(3)
+            with col7:
                 ov_investor_type = st.selectbox(
-                    "Investor Type", ["No override", "Professional", "Retail"],
-                    index=st.session_state.get('ov_investor_type_index', 0), key='ov_investor_type',
+                    "Investor Type", 
+                    ["No override", "Professional", "Retail"],
+                    index=st.session_state.get('ov_investor_type_index', 0), 
+                    key='ov_investor_type',
                     help="Override investor classification"
                 )
-            with col_ov8:
+            with col8:
                 ov_share_class = st.text_input(
                     "Share Class Override",
                     value=st.session_state.get('ov_share_class', ''),
-                    placeholder="e.g., A Ordinary", key='ov_share_class',
+                    placeholder="e.g., A Ordinary", 
+                    key='ov_share_class',
                     help="Override share class name"
                 )
-            
-            # Fourth row - 2 columns with equal width
-            col_ov9, col_ov10 = st.columns(2)
-            with col_ov9:
+            with col9:
                 ov_shares_override = st.number_input(
                     "Number of Shares Override",
                     min_value=0,
@@ -1947,8 +2015,6 @@ def render_specialized_fee_generation():
                     key='ov_shares_override',
                     help="Override calculated number of shares"
                 )
-            with col_ov10:
-                st.caption("Leave as 0 to use calculated value")
         
         # Build overrides dictionary from session state values
         if st.session_state.get('ov_upfront', 0.0) > 0:
@@ -2157,14 +2223,36 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
         # Show actual fee letter text
         st.markdown("### Actual Fee Letter Text")
         if result.get('email_content'):
-            # Convert HTML to readable text for preview
+            # Convert HTML to readable text for preview while preserving structure
             email_content = result['email_content']
             
-            # Remove HTML tags and convert to readable text
-            readable_content = re.sub(r'<[^>]+>', '', email_content)
+            # Convert HTML to readable text with proper formatting
+            readable_content = email_content
+            
+            # Replace HTML entities
             readable_content = re.sub(r'&pound;', '£', readable_content)
             readable_content = re.sub(r'&nbsp;', ' ', readable_content)
-            readable_content = re.sub(r'\s+', ' ', readable_content).strip()
+            
+            # Convert HTML tags to readable format
+            readable_content = re.sub(r'<p>', '\n\n', readable_content)
+            readable_content = re.sub(r'</p>', '', readable_content)
+            readable_content = re.sub(r'<br\s*/?>', '\n', readable_content)
+            readable_content = re.sub(r'<ul>', '\n', readable_content)
+            readable_content = re.sub(r'</ul>', '\n', readable_content)
+            readable_content = re.sub(r'<li>', '• ', readable_content)
+            readable_content = re.sub(r'</li>', '\n', readable_content)
+            readable_content = re.sub(r'<b>', '**', readable_content)
+            readable_content = re.sub(r'</b>', '**', readable_content)
+            readable_content = re.sub(r'<u>', '__', readable_content)
+            readable_content = re.sub(r'</u>', '__', readable_content)
+            
+            # Remove any remaining HTML tags
+            readable_content = re.sub(r'<[^>]+>', '', readable_content)
+            
+            # Clean up extra whitespace and normalize line breaks
+            readable_content = re.sub(r'\n\s*\n\s*\n', '\n\n', readable_content)
+            readable_content = re.sub(r' +', ' ', readable_content)
+            readable_content = readable_content.strip()
             
             # Add share quantity information if available
             preview_data = result.get('preview_data', {})

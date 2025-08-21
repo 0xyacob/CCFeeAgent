@@ -830,16 +830,16 @@ class FeeLetterAgent(BaseAgent):
             preview_data = {
                 "investor_name": investor_name,
                 "company_name": company_name,
-                "gross_investment": gross_investment,
-                "total_fees": total_fees,
-                "total_transfer": total_transfer,
-                "share_quantity": share_quantity,
+                "gross_investment": round(gross_investment, 2),  # Ensure 2 decimal places
+                "total_fees": round(total_fees, 2),  # Ensure 2 decimal places
+                "total_transfer": round(total_transfer_correct, 2),  # Ensure 2 decimal places
+                "share_quantity": round(share_quantity, 2),  # Ensure 2 decimal places
                 "investment_type": investment_type_description,
                 "calculation_note": calculation_note,
-                "validation_warnings": [],  # No warnings - clean interface
-                "input_amount": investment_amount,
+                "validation_warnings": [],
+                "input_amount": round(investment_amount, 2),  # Ensure 2 decimal places
                 # Add share quantity info for display
-                "share_quantity_exact": share_quantity,
+                "share_quantity_exact": round(share_quantity, 2),
                 "share_quantity_rounded": round(share_quantity),
                 "shares_have_decimals": (share_quantity % 1) != 0
             }
@@ -974,7 +974,7 @@ class FeeLetterAgent(BaseAgent):
                     salutation=salutation,
                     investor_last_name=investor_last_name,
                     investment_type=investment_type,
-                    investment_amount=f"{display_amount:,.0f}",
+                    investment_amount=f"{display_amount:,.2f}",  # Maintain 2 decimal places
                     company_name=company_name,
                     number_of_shares=number_of_shares,
                     share_type=share_type,
