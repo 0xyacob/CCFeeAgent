@@ -1518,11 +1518,24 @@ class FeeLetterAgent(BaseAgent):
                 xp = os.getenv('EXCEL_PATH')
             if not xp:
                 return {"total": 0, "rows": [], "excel_file": None}
-            # Reuse cached adapter to avoid re-reading Excel on each keystroke
-            adapter = FeeLetterAgent._excel_adapter_cache.get(xp)
-            if adapter is None:
+            # Smart cache with mtime check; reload if file changed
+            import os as _os
+            try:
+                current_mtime = _os.path.getmtime(xp)
+            except Exception:
+                current_mtime = None
+            cache_entry = FeeLetterAgent._excel_adapter_cache.get(xp)
+            adapter = None
+            cached_mtime = None
+            if cache_entry:
+                if isinstance(cache_entry, tuple) and len(cache_entry) == 2:
+                    adapter, cached_mtime = cache_entry
+                else:
+                    adapter = cache_entry
+            # Reload when no adapter, or mtime changed, or mtime unknown
+            if (adapter is None) or (current_mtime is not None and current_mtime != cached_mtime):
                 adapter = ExcelLocalThreeSheet(xp)
-                FeeLetterAgent._excel_adapter_cache[xp] = adapter
+                FeeLetterAgent._excel_adapter_cache[xp] = (adapter, current_mtime)
             df = getattr(adapter, 'cos', None)
             if df is None:
                 return {"total": 0, "rows": [], "excel_file": xp}
@@ -1548,11 +1561,23 @@ class FeeLetterAgent(BaseAgent):
                 xp = os.getenv('EXCEL_PATH')
             if not xp:
                 return {"total": 0, "rows": [], "excel_file": None}
-            # Use cached adapter when possible
-            adapter = FeeLetterAgent._excel_adapter_cache.get(xp)
-            if adapter is None:
+            # Smart cache with mtime check; reload if file changed
+            import os as _os
+            try:
+                current_mtime = _os.path.getmtime(xp)
+            except Exception:
+                current_mtime = None
+            cache_entry = FeeLetterAgent._excel_adapter_cache.get(xp)
+            adapter = None
+            cached_mtime = None
+            if cache_entry:
+                if isinstance(cache_entry, tuple) and len(cache_entry) == 2:
+                    adapter, cached_mtime = cache_entry
+                else:
+                    adapter = cache_entry
+            if (adapter is None) or (current_mtime is not None and current_mtime != cached_mtime):
                 adapter = ExcelLocalThreeSheet(xp)
-                FeeLetterAgent._excel_adapter_cache[xp] = adapter
+                FeeLetterAgent._excel_adapter_cache[xp] = (adapter, current_mtime)
             inv_df = getattr(adapter, 'inv', None)
             fees_df = getattr(adapter, 'fees', None)
             if inv_df is None:
