@@ -129,6 +129,8 @@ class FeeLetterAgent(BaseAgent):
         amount_patterns = [
             # Most specific pattern for our exact format: "for {amount} into"
             r'for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s+into',
+            # More specific pattern for "create a fee letter for {name} for {amount} into"
+            r'create\s+a\s+fee\s+letter\s+for\s+.+?\s+for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
             # Prioritize decimal-aware patterns FIRST to preserve cents/pence
             r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:into|in|for)',
             r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
