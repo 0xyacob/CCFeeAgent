@@ -591,10 +591,27 @@ class FeeLetterAgent(BaseAgent):
             if excel_path:
                 try:
                     from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
-                    adapter = FeeLetterAgent._excel_adapter_cache.get(excel_path)
-                    if adapter is None:
+                    import os as _os
+                    # Determine current mtime of the file to decide cache refresh
+                    try:
+                        current_mtime = _os.path.getmtime(excel_path)
+                    except Exception:
+                        current_mtime = None
+
+                    cache_entry = FeeLetterAgent._excel_adapter_cache.get(excel_path)
+                    adapter = None
+                    cached_mtime = None
+                    if cache_entry:
+                        if isinstance(cache_entry, tuple) and len(cache_entry) == 2:
+                            adapter, cached_mtime = cache_entry
+                        else:
+                            adapter = cache_entry
+
+                    # Reload when missing or file changed
+                    if (adapter is None) or (current_mtime is not None and current_mtime != cached_mtime):
                         adapter = ExcelLocalThreeSheet(excel_path)
-                        FeeLetterAgent._excel_adapter_cache[excel_path] = adapter
+                        FeeLetterAgent._excel_adapter_cache[excel_path] = (adapter, current_mtime)
+
                     payload = adapter.resolve_payload(investor_name, company_name, investment_amount)
                     inv_p = payload.get("investor", {})
                     fee_ctx = payload.get("fee_context", {})
