@@ -881,7 +881,8 @@ class FeeLetterAgent(BaseAgent):
                         if v is None:
                             return default
                         fv = float(v)
-                        return fv * 100.0 if fv <= 1.0 else fv
+                        # Treat values strictly less than 1.0 as fraction (e.g., 0.01 -> 1.0%)
+                        return fv * 100.0 if fv < 1.0 else fv
                     except Exception:
                         return default
                 applied_rates = fee_calculation.breakdown.get('applied_rates', {}) if fee_calculation else {}
@@ -898,12 +899,12 @@ class FeeLetterAgent(BaseAgent):
                 total_transfer_correct = fee_calculation.total_transfer if fee_calculation else (gross_investment + upfront_fee_value + amc_1_3_value)
 
                 # Format for template with proper rounding to avoid floating-point precision issues
-                upfront_fee_pct_str = f"{round(upfront_fee_pct, 2)}"
+                upfront_fee_pct_str = f"{upfront_fee_pct:.2f}"
                 upfront_fee_value_str = f"{upfront_fee_value:,.2f}"
-                amc_1_3_pct_str = f"{round(amc_1_3_pct, 2)}"
+                amc_1_3_pct_str = f"{amc_1_3_pct:.2f}"
                 amc_1_3_value_str = f"{amc_1_3_value:,.2f}"
-                amc_4_5_pct_str = f"{round(amc_4_5_pct, 2)}"
-                performance_fee_pct_str = f"{round(performance_fee_pct, 2)}"
+                amc_4_5_pct_str = f"{amc_4_5_pct:.2f}"
+                performance_fee_pct_str = f"{performance_fee_pct:.2f}"
                 total_transfer_str = f"{total_transfer_correct:,.2f}"
 
                 # Build full reference for template: if Excel provided a subscription code, use it as-is.
