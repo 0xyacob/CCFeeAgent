@@ -392,8 +392,13 @@ class FeeLetterAgent(BaseAgent):
             from microsoft_graph_mail import MicrosoftGraphMailService
             mail_service = MicrosoftGraphMailService(send_mode=self.email_mode)
             
-            # Convert plain text body to HTML for better formatting
-            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
+            # If the body already looks like HTML, send as-is; otherwise wrap in <pre>
+            body_lower = (body or "").lower()
+            looks_like_html = any(tag in body_lower for tag in ["<html", "<body", "<p", "<ul", "<li", "&pound;"])
+            if looks_like_html:
+                html_body = body
+            else:
+                html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
             
             # Send via Microsoft Graph
             success = mail_service.send_or_draft(
@@ -426,8 +431,13 @@ class FeeLetterAgent(BaseAgent):
             # Parse primary recipients
             to_list = [addr.strip() for addr in to_addresses.split(';') if addr.strip()]
             
-            # Convert plain text body to HTML for better formatting
-            html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
+            # If the body already looks like HTML, send as-is; otherwise wrap in <pre>
+            body_lower = (body or "").lower()
+            looks_like_html = any(tag in body_lower for tag in ["<html", "<body", "<p", "<ul", "<li", "&pound;"])
+            if looks_like_html:
+                html_body = body
+            else:
+                html_body = f"<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>{body}</pre>"
             
             # Add CC information to the body
             html_body = f"<p><strong>CC:</strong> {cc_address}</p><hr/>{html_body}"
