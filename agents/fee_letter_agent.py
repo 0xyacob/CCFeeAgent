@@ -128,9 +128,9 @@ class FeeLetterAgent(BaseAgent):
         # Enhanced patterns for better extraction - prioritize full numbers FIRST
         amount_patterns = [
             # Prioritize decimal-aware patterns FIRST to preserve cents/pence
-            r'(?:£|GBP\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*(?:into|in|for)',
-            r'(?:£|GBP\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
-            r'(?:£|GBP\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*(?:k|thousand)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:into|in|for)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:k|thousand)',
             # Fallback integer patterns (no decimals)
             r'(?:£|GBP\s*)?(\d{4,})\s*(?:into|in|for)',
             r'(?:£|GBP\s*)?(\d{4,})',
