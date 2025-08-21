@@ -315,6 +315,46 @@ class MicrosoftGraphMailService:
             print(f"❌ Error testing email functionality: {e}")
             return False
 
+    def verify_permissions(self) -> Dict[str, Any]:
+        """Verify the signed-in user can work with the shared mailbox.
+
+        We perform a single safe check that doesn't require directory permissions:
+        - POST /users/{MAILBOX}/messages with a minimal draft payload (isDraft: true)
+          Graph returns 201 if the account has Mail.ReadWrite.Shared on the shared mailbox
+          and the mailbox grants FullAccess. No message is sent.
+
+        Returns: { ok: bool, status: int|None, error: str|None }
+        """
+        headers = self._get_headers()
+        if not headers:
+            return {"ok": False, "status": None, "error": "No auth token"}
+        try:
+            url_messages = f"{self.GRAPH_API_BASE}/users/{self.MAILBOX}/messages"
+            payload = {
+                "subject": "Permission check (safe draft)",
+                "body": {"contentType": "HTML", "content": "<p>Permission check</p>"},
+                "toRecipients": [{"emailAddress": {"address": self.MAILBOX}}],
+                "isDraft": True
+            }
+            r = requests.post(url_messages, headers=headers, json=payload)
+            if r.status_code == 201:
+                try:
+                    draft = r.json()
+                    draft_id = draft.get("id")
+                    if draft_id:
+                        # Immediately delete the temporary draft to avoid mailbox clutter
+                        del_url = f"{self.GRAPH_API_BASE}/users/{self.MAILBOX}/messages/{draft_id}"
+                        requests.delete(del_url, headers=headers)
+                except Exception:
+                    pass
+                return {"ok": True, "status": 201, "error": None}
+            # 403 typically indicates either missing Mail.ReadWrite.Shared scope or no FullAccess rights
+            # 404 could indicate the shared mailbox UPN is incorrect for this tenant
+            # 401 indicates the token is invalid/expired
+            return {"ok": False, "status": r.status_code, "error": r.text}
+        except Exception as e:
+            return {"ok": False, "status": None, "error": str(e)}
+
 
 # Convenience functions
 def create_draft(to_address: str, 

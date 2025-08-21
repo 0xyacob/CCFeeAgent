@@ -1465,3 +1465,150 @@ class FeeLetterAgent(BaseAgent):
                 "company_names": [],
                 "error": f"Error debugging company search: {str(e)}"
             }
+
+    def list_companies(self) -> Dict[str, Any]:
+        """Return companies with key details for UI listing."""
+        try:
+            from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
+            try:
+                from config_manager import ConfigManager
+                xp = ConfigManager().get_excel_path()
+            except Exception:
+                xp = os.getenv('EXCEL_PATH')
+            if not xp:
+                return {"total": 0, "rows": [], "excel_file": None}
+            # Reuse cached adapter to avoid re-reading Excel on each keystroke
+            adapter = FeeLetterAgent._excel_adapter_cache.get(xp)
+            if adapter is None:
+                adapter = ExcelLocalThreeSheet(xp)
+                FeeLetterAgent._excel_adapter_cache[xp] = adapter
+            df = getattr(adapter, 'cos', None)
+            if df is None:
+                return {"total": 0, "rows": [], "excel_file": xp}
+            cols = [c for c in ['Company Name', 'Current Share Price', 'Share Class', 'Company Number'] if c in df.columns]
+            rows = []
+            for _, r in df.iterrows():
+                item = {c: r.get(c) for c in cols}
+                rows.append(item)
+            return {"total": len(rows), "rows": rows, "excel_file": xp}
+        except Exception as e:
+            return {"total": 0, "rows": [], "error": str(e)}
+
+    def list_investors(self, query: Optional[str] = None) -> Dict[str, Any]:
+        """Return investors with key details, fee columns, and missing-data flags.
+        Supports optional case-insensitive name search.
+        """
+        try:
+            from adapters.excel_three_sheet_adapter import ExcelLocalThreeSheet
+            try:
+                from config_manager import ConfigManager
+                xp = ConfigManager().get_excel_path()
+            except Exception:
+                xp = os.getenv('EXCEL_PATH')
+            if not xp:
+                return {"total": 0, "rows": [], "excel_file": None}
+            # Use cached adapter when possible
+            adapter = FeeLetterAgent._excel_adapter_cache.get(xp)
+            if adapter is None:
+                adapter = ExcelLocalThreeSheet(xp)
+                FeeLetterAgent._excel_adapter_cache[xp] = adapter
+            inv_df = getattr(adapter, 'inv', None)
+            fees_df = getattr(adapter, 'fees', None)
+            if inv_df is None:
+                return {"total": 0, "rows": [], "excel_file": xp}
+            df = inv_df.copy()
+            if 'First Name' in df.columns and 'Last Name' in df.columns:
+                df['__FullName'] = (df['First Name'].astype(str).str.strip() + ' ' + df['Last Name'].astype(str).str.strip()).str.strip()
+            else:
+                df['__FullName'] = df.get('Investor Name', '')
+            if query:
+                q = str(query).strip().lower()
+                df = df[df['__FullName'].astype(str).str.lower().str.contains(q, na=False)]
+            # Required fields mapped to the keys we actually output in `row`
+            required = ['First Name', 'Last Name', 'Investor Email', 'Custodian Client Ref', 'Set up fee %', 'AMC %', 'Carry %', 'Gross/Net']
+            out = []
+            # Build fee lookup by Custodian Client Ref for fallback
+            fee_lookup = {}
+            if fees_df is not None and 'Custodian Client Ref' in fees_df.columns:
+                try:
+                    df_fees = fees_df.copy()
+                    for _, fr in df_fees.iterrows():
+                        key = str(fr.get('Custodian Client Ref', '')).strip()
+                        if key and key not in fee_lookup:
+                            fee_lookup[key] = fr
+                except Exception:
+                    pass
+            def norm_pct(v):
+                try:
+                    f = float(v)
+                    return f*100.0 if f <= 1.0 else f
+                except Exception:
+                    return None
+            for _, r in df.iterrows():
+                full_name = r.get('__FullName')
+                ref = str(r.get('Custodian Client Ref', '')).strip()
+                
+                # Check what's actually missing from the Excel data BEFORE creating fallbacks
+                missing_from_excel = []
+                
+                # Check investor sheet fields
+                if not str(r.get('First Name', '')).strip():
+                    missing_from_excel.append('First Name')
+                if not str(r.get('Last Name', '')).strip():
+                    missing_from_excel.append('Last Name')
+                if not str(r.get('Contact email', '')).strip() and not str(r.get('Email', '')).strip():
+                    missing_from_excel.append('Investor Email')
+                if not ref:
+                    missing_from_excel.append('Custodian Client Ref')
+                
+                # Check fee sheet fields
+                fee_row = None
+                try:
+                    if hasattr(adapter, 'find_fee_row') and ref:
+                        fee_row = adapter.find_fee_row(ref, None, investor_full_name=full_name)
+                except Exception:
+                    fee_row = None
+                if fee_row is None:
+                    fee_row = fee_lookup.get(ref)
+                
+                if fee_row is not None:
+                    if not str(fee_row.get('CC Set up fee %', '')).strip():
+                        missing_from_excel.append('Set up fee %')
+                    if not str(fee_row.get('CC AMC %', '')).strip():
+                        missing_from_excel.append('AMC %')
+                    if not str(fee_row.get('CC Carry %', '')).strip():
+                        missing_from_excel.append('Carry %')
+                    if not str(fee_row.get('Gross/Net', '')).strip():
+                        missing_from_excel.append('Gross/Net')
+                else:
+                    # If no fee row found, all fee fields are missing
+                    missing_from_excel.extend(['Set up fee %', 'AMC %', 'Carry %', 'Gross/Net'])
+                
+                row = {
+                    'Full Name': full_name,
+                    'First Name': r.get('First Name'),
+                    'Last Name': r.get('Last Name'),
+                    'Investor Email': r.get('Contact email') or r.get('Email'),
+                    'Custodian Client Ref': ref,
+                }
+                
+                if fee_row is not None:
+                    row['Set up fee %'] = norm_pct(fee_row.get('CC Set up fee %'))
+                    row['AMC %'] = norm_pct(fee_row.get('CC AMC %'))
+                    row['Carry %'] = norm_pct(fee_row.get('CC Carry %'))
+                    row['Gross/Net'] = fee_row.get('Gross/Net')
+                    fund_val = fee_row.get('Fund')
+                    row['Investor Type'] = 'Professional' if isinstance(fund_val, str) and 'pro' in fund_val.lower() else 'Retail'
+                else:
+                    row['Set up fee %'] = None
+                    row['AMC %'] = None
+                    row['Carry %'] = None
+                    row['Gross/Net'] = None
+                    row['Investor Type'] = None
+                
+                # Use the actual missing fields from Excel, not the processed row
+                row['missing'] = missing_from_excel
+                out.append(row)
+            return {"total": len(out), "rows": out, "excel_file": xp}
+        except Exception as e:
+            return {"total": 0, "rows": [], "error": str(e)}

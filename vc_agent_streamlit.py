@@ -55,17 +55,57 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+if 'preauth_ok' not in st.session_state:
+    st.session_state.preauth_ok = False
 
-# Password protection
+if not st.session_state.preauth_ok:
+    st.title("🔐 Committed Capital Agentic Assistant")
+    st.markdown("### Microsoft sign-in required to continue")
+    
+    from microsoft_graph_auth_manager import get_auth_manager
+    from microsoft_graph_mail import MicrosoftGraphMailService
+    
+    col1, col2 = st.columns([1,2])
+    with col1:
+        if st.button("Sign in with Microsoft", type="primary"):
+            try:
+                manager = get_auth_manager()
+                token = manager.get_access_token(force_refresh=False)
+                if not token:
+                    st.error("❌ Authentication failed. Please try again.")
+                else:
+                    svc = MicrosoftGraphMailService()
+                    check = svc.verify_permissions()
+                    if check.get('ok'):
+                        # Persist user info for later display
+                        try:
+                            st.session_state.user_info = manager.get_user_info() or {}
+                        except Exception:
+                            st.session_state.user_info = {}
+                        st.session_state.preauth_ok = True
+                        st.success("✅ Permissions verified for investors@committedcapital.co.uk")
+                        st.rerun()
+                    else:
+                        st.error("❌ You do not have the required permissions to use investors@committedcapital.co.uk")
+                        st.caption(f"Status: {check.get('status')} | {check.get('error')}")
+            except Exception as e:
+                st.error(f"❌ Sign-in error: {e}")
+    with col2:
+        try:
+            u = get_auth_manager().get_user_info() or {}
+            if u:
+                st.info(f"Signed in as: {u.get('displayName','Unknown')} ({u.get('mail') or u.get('userPrincipalName','no email')})")
+        except Exception:
+            pass
+    st.stop()
+
+# Password protection (runs only after preauth_ok)
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.title("🔐 Committed Capital Agentic Assistant")
     st.markdown("### Please enter the password to access the application")
-    
     password = st.text_input("Password", type="password", key="password_input")
-    
     if st.button("Login", type="primary"):
         if password == "136c17c6":
             st.session_state.authenticated = True
@@ -73,10 +113,8 @@ if not st.session_state.authenticated:
         else:
             st.error("❌ Incorrect password. Please try again.")
             st.stop()
-    
     if password == "":
         st.info("💡 Enter the password to access the application")
-    
     st.stop()
 
 # Enhanced CSS for professional VC interface
@@ -104,10 +142,10 @@ st.markdown("""
     /* Navigation Bar */
     .nav-container {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem 2rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        padding: 0.75rem 1.25rem;
+        border-radius: 14px;
+        margin: 0 0 1.25rem 0;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.18);
     }
     
     .nav-content {
@@ -118,48 +156,50 @@ st.markdown("""
     }
     
     .nav-title {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 700;
         margin: 0;
+        line-height: 1.1;
     }
     
     .nav-subtitle {
         font-size: 0.9rem;
-        opacity: 0.8;
-        margin: 0;
+        opacity: 0.85;
+        margin: 0.1rem 0 0 0;
     }
     
     .nav-actions {
         display: flex;
-        gap: 1rem;
+        gap: 0.75rem;
         align-items: center;
     }
     
     .nav-breadcrumb {
-        background: rgba(255,255,255,0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
+        background: rgba(255,255,255,0.22);
+        padding: 0.4rem 0.8rem;
+        border-radius: 999px;
         font-size: 0.9rem;
         font-weight: 500;
+        line-height: 1;
     }
     
     /* Header Styling */
     .main-header {
-        font-size: 3.5rem;
+        font-size: 3.2rem;
         font-weight: 700;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        margin-bottom: 1rem;
+        margin: 0.25rem 0 0.5rem 0;
         letter-spacing: -0.02em;
     }
     
     .subtitle {
         text-align: center;
         color: #6b7280;
-        font-size: 1.3rem;
-        margin-bottom: 3rem;
+        font-size: 1.2rem;
+        margin: 0 0 2rem 0;
         font-weight: 400;
     }
     
@@ -294,6 +334,18 @@ def render_navigation():
     
     current_breadcrumb = breadcrumbs.get(current_interface, 'Dashboard')
     
+    # Signed-in user info (for right side display)
+    user_display = ""
+    try:
+        from microsoft_graph_auth_manager import get_auth_manager as _get_auth_manager
+        uinfo = _get_auth_manager().get_user_info() or {}
+        if uinfo:
+            _name = uinfo.get('displayName') or uinfo.get('givenName') or 'Unknown'
+            _mail = uinfo.get('mail') or uinfo.get('userPrincipalName') or ''
+            user_display = f"Signed in: {_name}{' (' + _mail + ')' if _mail else ''}"
+    except Exception:
+        pass
+    
     st.markdown(f"""
     <div class="nav-container">
         <div class="nav-content">
@@ -303,6 +355,7 @@ def render_navigation():
             </div>
             <div class="nav-actions">
                 <div class="nav-breadcrumb">{current_breadcrumb}</div>
+                {('<div class="nav-breadcrumb" style="margin-left:16px;white-space:nowrap;">' + user_display + '</div>') if user_display else ''}
             </div>
         </div>
     </div>
@@ -601,6 +654,7 @@ def main():
     # Header
     st.markdown('<div class="main-header">VC AI Assistant</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Your intelligent partner for UK venture capital operations</div>', unsafe_allow_html=True)
+    # Signed-in indicator now shown in navigation; remove duplicate here for cleaner layout
     
     # Sidebar
     with st.sidebar:
@@ -1644,12 +1698,15 @@ def render_specialized_fee_generation():
     </div>
     """, unsafe_allow_html=True)
     
+    st.divider()
+    
     # Excel Data Management
     try:
         from agents.fee_letter_agent import FeeLetterAgent
         fee_agent = FeeLetterAgent()
         
-        col_refresh, col_debug = st.columns(2)
+        # Toolbar with wider search for balance
+        col_refresh, col_companies, col_investors = st.columns([1,1,3])
         with col_refresh:
             if st.button("🔄 Refresh Excel Data", help="Clear cache and reload Excel data"):
                 try:
@@ -1658,27 +1715,60 @@ def render_specialized_fee_generation():
                     st.rerun()
                 except Exception as e:
                     st.error(f"❌ Error refreshing cache: {str(e)}")
-        
-        with col_debug:
-            if st.button("🔍 Debug Company Search", help="Show available companies in Excel"):
+
+        with col_companies:
+            if st.button("🏢 View Companies", help="List companies and key details"):
                 try:
-                    debug_info = fee_agent.debug_company_search()
-                    st.info(f"📊 Found {debug_info['total_companies']} companies in Excel")
-                    # Show file and modified time explicitly
-                    if debug_info.get('excel_file'):
-                        st.caption(f"Excel file: {debug_info.get('excel_file')}")
-                    if debug_info.get('excel_mtime'):
-                        st.caption(f"Last modified: {debug_info.get('excel_mtime')}")
-                    
-                    # Optional status (muted to avoid noise)
-                    if debug_info.get('contains_dingus') or debug_info.get('contains_pingus'):
-                        st.caption("Test companies present in dataset.")
-                    
-                    with st.expander("📋 All Available Companies"):
-                        for company in debug_info['company_names']:  # Show ALL companies
-                            st.write(f"• {company}")
+                    data = fee_agent.list_companies()
+                    st.info(f"📊 Companies: {data.get('total', 0)}")
+                    if data.get('excel_file'):
+                        st.caption(f"Excel file: {data.get('excel_file')}")
+                    with st.expander("📋 Company list"):
+                        rows = data.get('rows', [])
+                        if rows:
+                            import pandas as _pd
+                            st.dataframe(_pd.DataFrame(rows))
+                        else:
+                            st.caption("No companies found.")
                 except Exception as e:
-                    st.error(f"❌ Error debugging companies: {str(e)}")
+                    st.error(f"❌ Error listing companies: {str(e)}")
+
+        with col_investors:
+            # Investor search UI (debounced/live) – wider field, collapsed label
+            st.text_input(
+                "Investor search",
+                key="investor_search_box",
+                placeholder="🔎 Search investors (2+ chars)",
+                label_visibility="collapsed",
+                on_change=lambda: None
+            )
+            q = (st.session_state.investor_search_box if 'investor_search_box' in st.session_state else '').strip()
+            if len(q) < 2:
+                st.caption("Type at least 2 characters to search investors")
+            else:
+                try:
+                    with st.spinner("Searching investors..."):
+                        data = fee_agent.list_investors(query=q)
+                    total = int(data.get('total', 0))
+                    st.info(f"👤 Investors: {total}")
+                    if data.get('excel_file'):
+                        st.caption(f"Excel file: {data.get('excel_file')}")
+                    with st.expander("📋 Investor list", expanded=True):
+                        rows = data.get('rows', [])
+                        if rows:
+                            import pandas as _pd
+                            df = _pd.DataFrame(rows)
+                            limit = 200
+                            if len(df) > limit:
+                                st.caption(f"Showing first {limit} of {len(df)} matches")
+                                df = df.head(limit)
+                            st.dataframe(df, use_container_width=True, height=360)
+                        else:
+                            st.caption("No investors found.")
+                except Exception as e:
+                    st.error(f"❌ Error listing investors: {str(e)}")
+        
+        st.divider()
         
         # Show current Excel path and last-modified for visibility
         try:
@@ -2338,15 +2428,12 @@ if __name__ == "__main__":
         
         initialize_session_state()
         
-        # Always render navigation (except on main page)
+        # Always render navigation (shows signed-in indicator on all pages)
         current_interface = st.session_state.get('current_interface', 'main_selection')
-        
-        if current_interface != 'main_selection':
-            render_navigation()
+        render_navigation()
         
         # Router based on current interface
         if current_interface == 'main_selection':
-            render_navigation()  # Show nav on main page too
             render_main_selection()
         elif current_interface == 'fee_generation':
             render_specialized_fee_generation()
