@@ -2138,6 +2138,15 @@ def render_specialized_fee_generation():
                         preview = result['preview_data']
                         st.info(f"🔍 **Debug - Parsed Amount:** {preview.get('input_amount', 'N/A')} → {preview.get('gross_investment', 'N/A')}")
                     
+                    # Debug: Show raw parsing info
+                    if result.get('extracted_entities'):
+                        entities = result['extracted_entities']
+                        st.warning(f"🔍 **Debug - Raw Parsing:** {entities}")
+                    
+                    # Debug: Show prompt and result summary
+                    st.info(f"🔍 **Debug - Prompt Sent:** '{prompt}'")
+                    st.info(f"🔍 **Debug - Result Summary:** Success={result.get('success')}, Message='{result.get('message', 'N/A')}'")
+                    
                     # Persist preview so it stays after reruns
                     st.session_state['last_fee_preview'] = result
                     
