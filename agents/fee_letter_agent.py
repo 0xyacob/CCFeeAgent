@@ -850,115 +850,115 @@ class FeeLetterAgent(BaseAgent):
                     template_content = "<p>Template missing.</p>"
                 
                 template = Template(template_content)
-                    
-                    # Prepare template variables with CORRECT fee calculations
-                    salutation = inv_data.get('Salutation', 'Dear')
-                    investor_last_name = inv_data.get('Last Name', investor_name.split()[-1] if investor_name else '')
-                    investment_type = investment_type_description.lower()
-                    number_of_shares = f"{share_quantity:,.0f}"
-                    share_type = comp_data.get('Share Class', 'Ordinary Share')
-                    
-                    # Display percentages with normalization: decimals (<=1) → percent
-                    def pct_disp(v, default):
-                        try:
-                            if v is None:
-                                return default
-                            fv = float(v)
-                            return fv * 100.0 if fv <= 1.0 else fv
-                        except Exception:
-                            return default
-                    applied_rates = fee_calculation.breakdown.get('applied_rates', {}) if fee_calculation else {}
-                    upfront_fee_pct = pct_disp(applied_rates.get('upfront_pct'), 2.0)
-                    amc_1_3_pct = pct_disp(applied_rates.get('amc_1_3_pct'), 2.0)
-                    amc_4_5_pct = pct_disp(applied_rates.get('amc_4_5_pct'), 1.5)
-                    # Performance not in applied_rates; normalize from Excel context
-                    performance_fee_pct = pct_disp((fee_ctx.get('performance_pct') if used_excel else None), 20.0)
 
-                    # Pull values including VAT from enhanced calculation breakdown
-                    fb = fee_calculation.breakdown.get('fee_breakdown', {}) if fee_calculation else {}
-                    upfront_fee_value = fb.get('upfront_total', fb.get('upfront', 0.0))
-                    amc_1_3_value = fb.get('amc_1_3_total', fb.get('amc_1_3', 0.0))
-                    total_transfer_correct = fee_calculation.total_transfer if fee_calculation else (gross_investment + upfront_fee_value + amc_1_3_value)
+                # Prepare template variables with CORRECT fee calculations
+                salutation = inv_data.get('Salutation', 'Dear')
+                investor_last_name = inv_data.get('Last Name', investor_name.split()[-1] if investor_name else '')
+                investment_type = investment_type_description.lower()
+                number_of_shares = f"{share_quantity:,.0f}"
+                share_type = comp_data.get('Share Class', 'Ordinary Share')
 
-                    # Format for template with proper rounding to avoid floating-point precision issues
-                    upfront_fee_pct_str = f"{round(upfront_fee_pct, 2)}"
-                    upfront_fee_value_str = f"{upfront_fee_value:,.2f}"
-                    amc_1_3_pct_str = f"{round(amc_1_3_pct, 2)}"
-                    amc_1_3_value_str = f"{amc_1_3_value:,.2f}"
-                    amc_4_5_pct_str = f"{round(amc_4_5_pct, 2)}"
-                    performance_fee_pct_str = f"{round(performance_fee_pct, 2)}"
-                    total_transfer_str = f"{total_transfer_correct:,.2f}"
-                    
-                    # Build full reference for template: if Excel provided a subscription code, use it as-is.
-                    # Otherwise, generate using investor type rules.
-                    reference_full = None
-                    if subscription_ref:
-                        # If already prefixed (e.g., CC- or CS-), keep as-is; else use provided code directly
-                        sr = str(subscription_ref).strip()
-                        if sr.upper().startswith("CC-") or sr.upper().startswith("CS-"):
-                            reference_full = sr
-                        else:
-                            reference_full = sr
-                    else:
-                        # No code from Excel; generate
-                        if custom_fees and 'investor_type' in custom_fees:
-                            temp_inv_data = inv_data.copy()
-                            temp_inv_data['Investor Type'] = str(custom_fees['investor_type']).lower()
-                            subscription_ref = self._generate_subscription_reference(temp_inv_data, comp_data)
-                            reference_preface = "CC" if temp_inv_data['Investor Type'] == 'professional' else "CS"
-                        else:
-                            subscription_ref = self._generate_subscription_reference(inv_data, comp_data)
-                            reference_preface = "CC" if inv_data.get('Investor Type', 'retail').lower() == 'professional' else "CS"
-                        reference_full = f"{reference_preface}-{subscription_ref}"
-
-                    # Hard override: if fee_ctx carries a subscription_reference from Excel, prefer that
+                # Display percentages with normalization: decimals (<=1) → percent
+                def pct_disp(v, default):
                     try:
-                        if used_excel and fee_ctx.get('subscription_reference'):
-                            reference_full = str(fee_ctx.get('subscription_reference')).strip()
+                        if v is None:
+                            return default
+                        fv = float(v)
+                        return fv * 100.0 if fv <= 1.0 else fv
                     except Exception:
-                        pass
+                        return default
+                applied_rates = fee_calculation.breakdown.get('applied_rates', {}) if fee_calculation else {}
+                upfront_fee_pct = pct_disp(applied_rates.get('upfront_pct'), 2.0)
+                amc_1_3_pct = pct_disp(applied_rates.get('amc_1_3_pct'), 2.0)
+                amc_4_5_pct = pct_disp(applied_rates.get('amc_4_5_pct'), 1.5)
+                # Performance not in applied_rates; normalize from Excel context
+                performance_fee_pct = pct_disp((fee_ctx.get('performance_pct') if used_excel else None), 20.0)
 
-                    # Expose reference_full to preview_data for UI verification
-                    preview_data['reference'] = reference_full or ''
-                    
-                    # Render the template
-                    rendered = template.render(
-                        salutation=salutation,
-                        investor_last_name=investor_last_name,
-                        investment_type=investment_type,
-                        investment_amount=f"{investment_amount:,.0f}",
-                        company_name=company_name,
-                        number_of_shares=number_of_shares,
-                        share_type=share_type,
-                        share_price=f"{share_price:.2f}",
-                        upfront_fee_pct=upfront_fee_pct_str,
-                        upfront_fee_value=upfront_fee_value_str,
-                        amc_1_3_pct=amc_1_3_pct_str,
-                        amc_1_3_value=amc_1_3_value_str,
-                        amc_4_5_pct=amc_4_5_pct_str,
-                        performance_fee_pct=performance_fee_pct_str,
-                        total_transfer=total_transfer_str,
-                         reference_full=reference_full
-                    )
-                    
-                    # If we rendered the legacy TXT template, convert to simple HTML for email clients
-                    if not is_html_template:
-                        # Convert simple markers to HTML-safe content
-                        import html as _html
-                        safe = _html.escape(rendered)
-                        safe = safe.replace("\n\n", "</p><p>")
-                        safe = safe.replace("\n  * ", "</p><ul><li>")
-                        safe = safe.replace("\n* ", "</p><ul><li>")
-                        safe = safe.replace("\n  - ", "</li><li>")
-                        # Close any open list at end
-                        if "<ul><li>" in safe:
-                            if not safe.endswith("</li></ul>"):
-                                safe = safe + "</li></ul>"
-                        email_content = f"<p>{safe}</p>"
-                        # Restore GBP symbol if author used GBP prefix
-                        email_content = email_content.replace("GBP", "&pound;")
+                # Pull values including VAT from enhanced calculation breakdown
+                fb = fee_calculation.breakdown.get('fee_breakdown', {}) if fee_calculation else {}
+                upfront_fee_value = fb.get('upfront_total', fb.get('upfront', 0.0))
+                amc_1_3_value = fb.get('amc_1_3_total', fb.get('amc_1_3', 0.0))
+                total_transfer_correct = fee_calculation.total_transfer if fee_calculation else (gross_investment + upfront_fee_value + amc_1_3_value)
+
+                # Format for template with proper rounding to avoid floating-point precision issues
+                upfront_fee_pct_str = f"{round(upfront_fee_pct, 2)}"
+                upfront_fee_value_str = f"{upfront_fee_value:,.2f}"
+                amc_1_3_pct_str = f"{round(amc_1_3_pct, 2)}"
+                amc_1_3_value_str = f"{amc_1_3_value:,.2f}"
+                amc_4_5_pct_str = f"{round(amc_4_5_pct, 2)}"
+                performance_fee_pct_str = f"{round(performance_fee_pct, 2)}"
+                total_transfer_str = f"{total_transfer_correct:,.2f}"
+
+                # Build full reference for template: if Excel provided a subscription code, use it as-is.
+                # Otherwise, generate using investor type rules.
+                reference_full = None
+                if subscription_ref:
+                    # If already prefixed (e.g., CC- or CS-), keep as-is; else use provided code directly
+                    sr = str(subscription_ref).strip()
+                    if sr.upper().startswith("CC-") or sr.upper().startswith("CS-"):
+                        reference_full = sr
                     else:
-                        email_content = rendered
+                        reference_full = sr
+                else:
+                    # No code from Excel; generate
+                    if custom_fees and 'investor_type' in custom_fees:
+                        temp_inv_data = inv_data.copy()
+                        temp_inv_data['Investor Type'] = str(custom_fees['investor_type']).lower()
+                        subscription_ref = self._generate_subscription_reference(temp_inv_data, comp_data)
+                        reference_preface = "CC" if temp_inv_data['Investor Type'] == 'professional' else "CS"
+                    else:
+                        subscription_ref = self._generate_subscription_reference(inv_data, comp_data)
+                        reference_preface = "CC" if inv_data.get('Investor Type', 'retail').lower() == 'professional' else "CS"
+                    reference_full = f"{reference_preface}-{subscription_ref}"
+
+                # Hard override: if fee_ctx carries a subscription_reference from Excel, prefer that
+                try:
+                    if used_excel and fee_ctx.get('subscription_reference'):
+                        reference_full = str(fee_ctx.get('subscription_reference')).strip()
+                except Exception:
+                    pass
+
+                # Expose reference_full to preview_data for UI verification
+                preview_data['reference'] = reference_full or ''
+
+                # Render the template
+                rendered = template.render(
+                    salutation=salutation,
+                    investor_last_name=investor_last_name,
+                    investment_type=investment_type,
+                    investment_amount=f"{investment_amount:,.0f}",
+                    company_name=company_name,
+                    number_of_shares=number_of_shares,
+                    share_type=share_type,
+                    share_price=f"{share_price:.2f}",
+                    upfront_fee_pct=upfront_fee_pct_str,
+                    upfront_fee_value=upfront_fee_value_str,
+                    amc_1_3_pct=amc_1_3_pct_str,
+                    amc_1_3_value=amc_1_3_value_str,
+                    amc_4_5_pct=amc_4_5_pct_str,
+                    performance_fee_pct=performance_fee_pct_str,
+                    total_transfer=total_transfer_str,
+                    reference_full=reference_full
+                )
+
+                # If we rendered the legacy TXT template, convert to simple HTML for email clients
+                if not is_html_template:
+                    # Convert simple markers to HTML-safe content
+                    import html as _html
+                    safe = _html.escape(rendered)
+                    safe = safe.replace("\n\n", "</p><p>")
+                    safe = safe.replace("\n  * ", "</p><ul><li>")
+                    safe = safe.replace("\n* ", "</p><ul><li>")
+                    safe = safe.replace("\n  - ", "</li><li>")
+                    # Close any open list at end
+                    if "<ul><li>" in safe:
+                        if not safe.endswith("</li></ul>"):
+                            safe = safe + "</li></ul>"
+                    email_content = f"<p>{safe}</p>"
+                    # Restore GBP symbol if author used GBP prefix
+                    email_content = email_content.replace("GBP", "&pound;")
+                else:
+                    email_content = rendered
                 else:
                     email_content = f"Template not found"
                     
