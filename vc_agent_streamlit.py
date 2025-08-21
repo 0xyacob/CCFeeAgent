@@ -1898,45 +1898,54 @@ def render_specialized_fee_generation():
             st.caption("These values will override Excel for this letter only.")
             col_ov1, col_ov2, col_ov3 = st.columns(3)
             with col_ov1:
-                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
-                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0, value=0.0, step=0.5)
+                ov_upfront = st.number_input("Setup Fee %", min_value=0.0, max_value=10.0, 
+                                           value=st.session_state.get('ov_upfront', 0.0), step=0.1, key='ov_upfront')
+                ov_vat = st.number_input("VAT %", min_value=0.0, max_value=25.0, 
+                                       value=st.session_state.get('ov_vat', 0.0), step=0.5, key='ov_vat')
             with col_ov2:
-                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
-                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0, value=0.0, step=0.01)
+                ov_amc13 = st.number_input("AMC 1–3 % (per year)", min_value=0.0, max_value=10.0, 
+                                          value=st.session_state.get('ov_amc13', 0.0), step=0.1, key='ov_amc13')
+                ov_share = st.number_input("Share Price (£)", min_value=0.0, max_value=1000.0, 
+                                         value=st.session_state.get('ov_share', 0.0), step=0.01, key='ov_share')
             with col_ov3:
-                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
-                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"], index=0)
+                ov_amc45 = st.number_input("AMC 4–5 % (per year)", min_value=0.0, max_value=10.0, 
+                                          value=st.session_state.get('ov_amc45', 0.0), step=0.1, key='ov_amc45')
+                ov_type = st.selectbox("Investment Type", ["No override", "Gross", "Net"], 
+                                     index=st.session_state.get('ov_type_index', 0), key='ov_type')
             
             # Additional overrides (investor type and share class)
             col_ov4, col_ov5 = st.columns(2)
             with col_ov4:
                 ov_investor_type = st.selectbox(
-                    "Investor Type", ["No override", "Professional", "Retail"], index=0,
+                    "Investor Type", ["No override", "Professional", "Retail"], 
+                    index=st.session_state.get('ov_investor_type_index', 0), key='ov_investor_type',
                     help="Override investor classification"
                 )
             with col_ov5:
                 ov_share_class = st.text_input(
-                    "Share Class Override", value="", placeholder="e.g., A Ordinary",
+                    "Share Class Override", 
+                    value=st.session_state.get('ov_share_class', ''), 
+                    placeholder="e.g., A Ordinary", key='ov_share_class',
                     help="Override share class name"
                 )
-            
-            if ov_upfront > 0:
-                overrides['upfront_fee_pct'] = float(ov_upfront)
-            if ov_amc13 > 0:
-                overrides['amc_1_3_pct'] = float(ov_amc13)
-            if ov_amc45 > 0:
-                overrides['amc_4_5_pct'] = float(ov_amc45)
-            if ov_vat > 0:
-                overrides['vat_rate'] = float(ov_vat)
-            if ov_share > 0:
-                overrides['share_price_override'] = float(ov_share)
-            if ov_type != "No override":
-                overrides['investment_type_override'] = ov_type.lower()
-            if ov_investor_type != "No override":
-                overrides['investor_type_override'] = ov_investor_type.lower()
-            if ov_share_class.strip():
-                overrides['share_class_override'] = ov_share_class.strip()
         
+        # Build overrides dictionary from session state values
+        if st.session_state.get('ov_upfront', 0.0) > 0:
+            overrides['upfront_fee_pct'] = float(st.session_state.get('ov_upfront', 0.0))
+        if st.session_state.get('ov_amc13', 0.0) > 0:
+            overrides['amc_1_3_pct'] = float(st.session_state.get('ov_amc13', 0.0))
+        if st.session_state.get('ov_amc45', 0.0) > 0:
+            overrides['amc_4_5_pct'] = float(st.session_state.get('ov_amc45', 0.0))
+        if st.session_state.get('ov_vat', 0.0) > 0:
+            overrides['vat_rate'] = float(st.session_state.get('ov_vat', 0.0))
+        if st.session_state.get('ov_share', 0.0) > 0:
+            overrides['share_price_override'] = float(st.session_state.get('ov_share', 0.0))
+        if st.session_state.get('ov_type', 'No override') != "No override":
+            overrides['investment_type_override'] = st.session_state.get('ov_type', 'No override').lower()
+        if st.session_state.get('ov_investor_type', 'No override') != "No override":
+            overrides['investor_type_override'] = st.session_state.get('ov_investor_type', 'No override').lower()
+        if st.session_state.get('ov_share_class', '').strip():
+            overrides['share_class_override'] = st.session_state.get('ov_share_class', '').strip()
         
         # Form submission
         st.markdown("---")
@@ -1966,7 +1975,16 @@ def render_specialized_fee_generation():
         keys_to_clear = [
             "specialized_investor_name",
             "specialized_company_name", 
-            "specialized_investment_amount"
+            "specialized_investment_amount",
+            # Clear override variables
+            "ov_upfront",
+            "ov_vat", 
+            "ov_amc13",
+            "ov_amc45",
+            "ov_share",
+            "ov_type",
+            "ov_investor_type",
+            "ov_share_class"
         ]
         
         for key in keys_to_clear:
