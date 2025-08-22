@@ -2107,13 +2107,6 @@ def render_specialized_fee_generation():
                 # Create prompt (investment type will be determined from Excel)
                 prompt = f"create a fee letter for {investor_name} for {investment_amount} into {company_name}"
                 
-                # Debug: Show what we're sending
-                print(f"DEBUG STREAMLIT: Sending prompt: '{prompt}'")
-                print(f"DEBUG STREAMLIT: investment_amount type: {type(investment_amount)}, value: {investment_amount}")
-                
-                # Show debug info in UI
-                st.info(f"🔍 **Debug Info:** Sending amount: {investment_amount} (type: {type(investment_amount).__name__})")
-                
                 # Use enhanced agent with configured Excel path
                 fee_agent = FeeLetterAgent()
                 
@@ -2125,27 +2118,8 @@ def render_specialized_fee_generation():
                 custom_fees = overrides if overrides else None
                 result = fee_agent.execute_enhanced(prompt, custom_fees=custom_fees)
                 
-                # Debug: Show what we received
-                print(f"DEBUG STREAMLIT: Received result: {result}")
-                if result.get("success"):
-                    print(f"DEBUG STREAMLIT: Preview data: {result.get('preview_data', {})}")
-                
                 if result["success"]:
                     st.success(result['message'].replace("✅ ", ""))
-                    
-                    # Debug: Show parsed data in UI
-                    if result.get('preview_data'):
-                        preview = result['preview_data']
-                        st.info(f"🔍 **Debug - Parsed Amount:** {preview.get('input_amount', 'N/A')} → {preview.get('gross_investment', 'N/A')}")
-                    
-                    # Debug: Show raw parsing info
-                    if result.get('extracted_entities'):
-                        entities = result['extracted_entities']
-                        st.warning(f"🔍 **Debug - Raw Parsing:** {entities}")
-                    
-                    # Debug: Show prompt and result summary
-                    st.info(f"🔍 **Debug - Prompt Sent:** '{prompt}'")
-                    st.info(f"🔍 **Debug - Result Summary:** Success={result.get('success')}, Message='{result.get('message', 'N/A')}'")
                     
                     # Persist preview so it stays after reruns
                     st.session_state['last_fee_preview'] = result
