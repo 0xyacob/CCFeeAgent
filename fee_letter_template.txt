@@ -1,6 +1,6 @@
 Dear {{ salutation }} {{ investor_last_name }}
 
-Thank you for proposing a {{ investment_type }} investment of GBP{{ investment_amount }} in {{ company_name }} - representing {{ number_of_shares }} {{ share_type }} at GBP{{ share_price }} per share. We're pleased to confirm this amount.
+Thank you for proposing a {{ investment_type }} investment of GBP{{ investment_amount }} in {{ company_name }} - representing {{ number_of_shares }} {{ share_type }} at GBP{{ share_price }} per share. We're pleased to confirm this arrangement.
 
 We set out below the bank account details and fee arrangements. Do please let us know when you have had the time to action this payment so that we may confirm receipt.
 

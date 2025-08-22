@@ -2262,8 +2262,11 @@ def render_fee_letter_preview(result: Dict[str, Any], preview_only: bool = True)
             if preview_data.get('shares_have_decimals'):
                 exact_qty = preview_data.get('share_quantity_exact', 0)
                 rounded_qty = preview_data.get('share_quantity_rounded', round(exact_qty))
-                shares_info = f"\n\n📊 **Share Quantity Note:** The calculated share quantity is {exact_qty:,.2f} shares. For ease of allocation, we recommend rounding to {rounded_qty:,} shares."
-                readable_content += shares_info
+                shares_info = f"\n\n📊 **Shares:** {rounded_qty:,} shares (rounded from {exact_qty:,.2f})"
+            else:
+                shares_info = f"\n\n📊 **Shares:** {preview_data.get('share_quantity', 0):,} shares"
+            
+            readable_content += shares_info
             
             st.text_area(
                 "Fee Letter Content (as it will appear):",
