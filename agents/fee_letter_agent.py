@@ -1012,6 +1012,8 @@ class FeeLetterAgent(BaseAgent):
                     "share_quantity_exact": round(share_quantity, 2),
                     "share_quantity_rounded": round(share_quantity),
                     "shares_have_decimals": (share_quantity % 1) != 0,
+                    # Add share quantity recommendation text with aligned investment amount
+                    "share_quantity_recommendation": self._generate_share_recommendation(share_quantity, share_price, is_net_investment, fee_calculation) if (share_quantity % 1) != 0 else f"{round(share_quantity):,} shares"
                 })
                 
                 # Render the template
@@ -1373,6 +1375,43 @@ class FeeLetterAgent(BaseAgent):
             
         except Exception as e:
             return f"REF-EIS-1"  # Fallback reference
+    
+    def _generate_share_recommendation(self, share_quantity: float, share_price: float, is_net_investment: bool, fee_calculation) -> str:
+        """Generate share quantity recommendation with aligned investment amount."""
+        try:
+            rounded_shares = round(share_quantity)
+            
+            if is_net_investment:
+                # For net investments, calculate what gross amount would give this net amount
+                target_net_amount = rounded_shares * share_price
+                # Estimate gross amount by adding typical fees (this is approximate)
+                if fee_calculation and hasattr(fee_calculation, 'breakdown'):
+                    # Use the fee breakdown to estimate gross amount
+                    breakdown = fee_calculation.breakdown
+                    if 'fee_breakdown' in breakdown:
+                        fees = breakdown['fee_breakdown']
+                        # Calculate total fees as percentage of gross
+                        upfront_pct = breakdown.get('applied_rates', {}).get('upfront_pct', 0.02)
+                        amc_pct = breakdown.get('applied_rates', {}).get('amc_1_3_pct', 0.02)
+                        total_fee_pct = upfront_pct + amc_pct
+                        # Estimate gross amount: net_amount / (1 - total_fee_pct)
+                        if total_fee_pct < 1.0:
+                            target_gross_amount = target_net_amount / (1 - total_fee_pct)
+                        else:
+                            target_gross_amount = target_net_amount
+                    else:
+                        target_gross_amount = target_net_amount
+                else:
+                    target_gross_amount = target_net_amount
+                
+                return f"Recommended: {rounded_shares:,} shares (£{target_gross_amount:,.2f}) - rounded from {share_quantity:,.2f} shares for ease of allocation"
+            else:
+                # For gross investments, calculate the gross amount needed for rounded shares
+                target_gross_amount = rounded_shares * share_price
+                return f"Recommended: {rounded_shares:,} shares (£{target_gross_amount:,.2f}) - rounded from {share_quantity:,.2f} shares for ease of allocation"
+        except Exception:
+            # Fallback if calculation fails
+            return f"Recommended: {round(share_quantity):,} shares (rounded from {share_quantity:,.2f} for ease of allocation)"
     
     def send_fee_letter_email(self, to_email: str, company_name: str, email_content: str) -> bool:
         """
