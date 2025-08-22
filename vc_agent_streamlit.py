@@ -1963,14 +1963,14 @@ def render_specialized_fee_generation():
             # Row 2: Amount and rate overrides
             col4, col5, col6 = st.columns(3)
             with col4:
-                ov_vat = st.number_input(
-                    "VAT %", 
+                ov_carry = st.number_input(
+                    "Carry %", 
                     min_value=0.0, 
-                    max_value=25.0,
-                    value=st.session_state.get('ov_vat', 0.0), 
+                    max_value=100.0,
+                    value=st.session_state.get('ov_carry', 0.0), 
                     step=0.5, 
-                    key='ov_vat',
-                    help="VAT percentage"
+                    key='ov_carry',
+                    help="Performance fee (carry) percentage"
                 )
             with col5:
                 ov_share = st.number_input(
@@ -2025,8 +2025,8 @@ def render_specialized_fee_generation():
             overrides['amc_1_3_pct'] = float(st.session_state.get('ov_amc13', 0.0))
         if st.session_state.get('ov_amc45', 0.0) > 0:
             overrides['amc_4_5_pct'] = float(st.session_state.get('ov_amc45', 0.0))
-        if st.session_state.get('ov_vat', 0.0) > 0:
-            overrides['vat_rate'] = float(st.session_state.get('ov_vat', 0.0))
+        if st.session_state.get('ov_carry', 0.0) > 0:
+            overrides['carry_pct'] = float(st.session_state.get('ov_carry', 0.0))
         if st.session_state.get('ov_share', 0.0) > 0:
             overrides['share_price_override'] = float(st.session_state.get('ov_share', 0.0))
         if st.session_state.get('ov_type', 'No override') != "No override":
@@ -2071,7 +2071,7 @@ def render_specialized_fee_generation():
             "specialized_investment_amount",
             # Clear override variables
             "ov_upfront",
-            "ov_vat", 
+            "ov_carry", 
             "ov_amc13",
             "ov_amc45",
             "ov_share",

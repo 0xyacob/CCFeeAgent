@@ -780,6 +780,9 @@ class FeeLetterAgent(BaseAgent):
                             calc_company_data['AMC 4–5 %'] = float(custom_fees['amc_4_5_pct'])
                         if 'vat_rate' in custom_fees and custom_fees['vat_rate'] is not None:
                             calc_company_data['vat_rate'] = float(custom_fees['vat_rate'])
+                        # New: Carry % override (performance fee)
+                        if 'carry_pct' in custom_fees and custom_fees['carry_pct'] is not None:
+                            calc_company_data['Perf Fee %'] = float(custom_fees['carry_pct'])
                         # Share price override affects preview/quantity, not calculator logic directly
                         if 'share_price_override' in custom_fees and custom_fees['share_price_override'] is not None:
                             try:
@@ -946,7 +949,12 @@ class FeeLetterAgent(BaseAgent):
                 amc_1_3_pct = pct_disp(applied_rates.get('amc_1_3_pct'), 2.0)
                 amc_4_5_pct = pct_disp(applied_rates.get('amc_4_5_pct'), 1.5)
                 # Performance not in applied_rates; normalize from Excel context
-                performance_fee_pct = pct_disp((fee_ctx.get('performance_pct') if used_excel else None), 20.0)
+                perf_src = None
+                if custom_fees and custom_fees.get('carry_pct') is not None:
+                    perf_src = custom_fees.get('carry_pct')
+                elif used_excel:
+                    perf_src = fee_ctx.get('performance_pct')
+                performance_fee_pct = pct_disp(perf_src, 20.0)
 
                 # Pull values including VAT from enhanced calculation breakdown
                 fb = fee_calculation.breakdown.get('fee_breakdown', {}) if fee_calculation else {}
@@ -1195,12 +1203,16 @@ class FeeLetterAgent(BaseAgent):
             breakdown = fee_calculation.breakdown
             if 'fee_breakdown' in breakdown:
                 fees = breakdown['fee_breakdown']
-                if fees.get('upfront', 0) > 0:
-                    fee_breakdown.append(f"Upfront: £{fees['upfront']:,.2f}")
-                if fees.get('amc_1_3', 0) > 0:
-                    fee_breakdown.append(f"AMC 1-3: £{fees['amc_1_3']:,.2f}")
-                if fees.get('amc_4_5', 0) > 0:
-                    fee_breakdown.append(f"AMC 4-5: £{fees['amc_4_5']:,.2f}")
+                # Use totals including VAT for summary display
+                upfront_tot = fees.get('upfront_total', fees.get('upfront', 0))
+                amc13_tot = fees.get('amc_1_3_total', fees.get('amc_1_3', 0))
+                amc45_tot = fees.get('amc_4_5_total', fees.get('amc_4_5', 0))
+                if upfront_tot and upfront_tot > 0:
+                    fee_breakdown.append(f"Upfront: £{upfront_tot:,.2f}")
+                if amc13_tot and amc13_tot > 0:
+                    fee_breakdown.append(f"AMC 1-3: £{amc13_tot:,.2f}")
+                if amc45_tot and amc45_tot > 0:
+                    fee_breakdown.append(f"AMC 4-5: £{amc45_tot:,.2f}")
         
         if not fee_breakdown:
             fee_breakdown = [f"Total: £{total_fees:,.2f}"]
