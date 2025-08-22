@@ -128,17 +128,17 @@ class FeeLetterAgent(BaseAgent):
         # Enhanced patterns for better extraction - prioritize full numbers FIRST
         amount_patterns = [
             # Most specific pattern for our exact format: "for {amount} into"
-            r'for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s+into',
+            r'for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)\s+into',
             # More specific pattern for "create a fee letter for {name} for {amount} into"
-            r'create\s+a\s+fee\s+letter\s+for\s+.+?\s+for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
+            r'create\s+a\s+fee\s+letter\s+for\s+.+?\s+for\s+(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)',
             # Prioritize decimal-aware patterns FIRST to preserve cents/pence
-            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:into|in|for)',
-            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)',
-            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:k|thousand)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:into|in|for)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)',
+            r'(?:£|GBP\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:k|thousand)',
             # Fallback integer patterns (no decimals)
             r'(?:£|GBP\s*)?(\d{4,})\s*(?:into|in|for)',
             r'(?:£|GBP\s*)?(\d{4,})',
-            r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:pounds?|gbp)',
+            r'(\d+(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:pounds?|gbp)',
         ]
         
         # Investment type patterns with scoring
@@ -245,10 +245,10 @@ class FeeLetterAgent(BaseAgent):
         if missing_entities:
             # Fallback: parse using the generic fee patterns used in can_handle
             fee_patterns = [
-                r"(?i)create a fee letter for (.+?) for £?([\d,]+\.?\d*) (?:net|gross)?\s*(?:into|in) (.+)",
-                r"(?i)create a letter for (.+?) for £?([\d,]+\.?\d*) (?:net|gross)?\s*(?:into|in) (.+)",
-                r"(?i)generate fee letter for (.+?) investing £?([\d,]+\.?\d*) (?:net|gross)?\s*in (.+)",
-                r"(?i)(.+?) £?([\d,]+\.?\d*) (.+)"
+                r"(?i)create a fee letter for (.+?) for £?([\d,]+(?:\.\d{1,2})?) (?:net|gross)?\s*(?:into|in) (.+)",
+                r"(?i)create a letter for (.+?) for £?([\d,]+(?:\.\d{1,2})?) (?:net|gross)?\s*(?:into|in) (.+)",
+                r"(?i)generate fee letter for (.+?) investing £?([\d,]+(?:\.\d{1,2})?) (?:net|gross)?\s*in (.+)",
+                r"(?i)(.+?) £?([\d,]+(?:\.\d{1,2})?) (.+)"
             ]
             print(f"DEBUG: Trying fallback patterns because missing: {missing_entities}")
             for i, pat in enumerate(fee_patterns):
