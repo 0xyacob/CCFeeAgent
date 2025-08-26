@@ -854,6 +854,45 @@ class FeeLetterAgent(BaseAgent):
             except Exception:
                 share_price = 1.0
             share_quantity = round(gross_investment / share_price, 4) if share_price else 0.0
+
+            # If a shares override was provided, recompute the aligned investment amount and recalc fees
+            aligned_input_amount = None
+            override_shares = None
+            if custom_fees and custom_fees.get('shares_override'):
+                try:
+                    override_shares = max(0, int(custom_fees['shares_override']))
+                except Exception:
+                    override_shares = None
+                if override_shares and share_price > 0:
+                    target_net_amount = override_shares * share_price
+                    # Clone calc_company_data and inv_data_mod from above scope if available
+                    try:
+                        calc_company_data_local = calc_company_data.copy() if 'calc_company_data' in locals() and isinstance(calc_company_data, dict) else {}
+                    except Exception:
+                        calc_company_data_local = {}
+                    try:
+                        inv_data_mod_local = inv_data_mod.copy() if 'inv_data_mod' in locals() and isinstance(inv_data_mod, dict) else {}
+                    except Exception:
+                        inv_data_mod_local = {}
+                    aligned_input_amount = self._solve_amount_for_target_net(target_net_amount, is_net_investment, calc_company_data_local, inv_data_mod_local)
+                    try:
+                        # Recalculate using aligned amount
+                        if FeeCalculator:
+                            fee_calculation = FeeCalculator.calc_breakdown(
+                                aligned_input_amount,
+                                is_net_investment,
+                                calc_company_data_local,
+                                inv_data_mod_local
+                            )
+                            # Update dependent values
+                            gross_investment = fee_calculation.gross_investment
+                            total_fees = fee_calculation.total_fees
+                            management_fee = fee_calculation.management_fee
+                            admin_fee = fee_calculation.admin_fee
+                            total_transfer = fee_calculation.total_transfer
+                            share_quantity = float(override_shares)
+                    except Exception:
+                        pass
             
             # Initialize preview_data early to avoid undefined variable errors
             preview_data = {
@@ -866,7 +905,7 @@ class FeeLetterAgent(BaseAgent):
                 "investment_type": investment_type_description,
                 "calculation_note": calculation_note,
                 "validation_warnings": [],
-                "input_amount": round(investment_amount, 2),
+                "input_amount": round(aligned_input_amount if aligned_input_amount is not None else investment_amount, 2),
                 "share_quantity_exact": round(share_quantity, 2),
                 "share_quantity_rounded": round(share_quantity),
                 "shares_have_decimals": (share_quantity % 1) != 0,
@@ -911,25 +950,26 @@ class FeeLetterAgent(BaseAgent):
                 # For net investments, show the original amount (fees are deducted)
                 if is_net_investment:
                     # Net: fees deducted, so show original amount
-                    display_amount = investment_amount
+                    display_amount = aligned_input_amount if aligned_input_amount is not None else investment_amount
                     number_of_shares = f"{share_quantity:,.0f}"
                 else:
                     # Gross: show the amount that actually goes into the company (net investment amount)
                     # This is the original amount minus the fees
-                    display_amount = fee_calculation.net_investment if fee_calculation else investment_amount
+                    display_amount = fee_calculation.net_investment if fee_calculation else (aligned_input_amount if aligned_input_amount is not None else investment_amount)
                     number_of_shares = f"{share_quantity:,.0f}"
                 
                 # Apply shares override if specified
                 if custom_fees and custom_fees.get('shares_override'):
                     try:
-                        override_shares = int(custom_fees['shares_override'])
-                        if override_shares > 0:
-                            number_of_shares = f"{override_shares:,}"
-                            # Update preview data to reflect override
-                            preview_data['share_quantity'] = override_shares
-                            preview_data['share_quantity_exact'] = override_shares
-                            preview_data['share_quantity_rounded'] = override_shares
+                        _ov = int(custom_fees['shares_override'])
+                        if _ov > 0:
+                            number_of_shares = f"{_ov:,}"
+                            preview_data['share_quantity'] = float(_ov)
+                            preview_data['share_quantity_exact'] = float(_ov)
+                            preview_data['share_quantity_rounded'] = _ov
                             preview_data['shares_have_decimals'] = False
+                            if aligned_input_amount is not None:
+                                preview_data['input_amount'] = round(aligned_input_amount, 2)
                     except Exception:
                         pass  # Keep original calculation if override fails
                 
@@ -1007,15 +1047,30 @@ class FeeLetterAgent(BaseAgent):
                 # Update preview_data with final calculated values
                 preview_data.update({
                     "gross_investment": round(display_amount, 2),
-                    "total_transfer": round(total_transfer_correct, 2),
+                    "total_transfer": round(total_transfer, 2) if fee_calculation else round(total_transfer_correct, 2),
                     "share_quantity": round(share_quantity, 2),
                     "share_quantity_exact": round(share_quantity, 2),
                     "share_quantity_rounded": round(share_quantity),
                     "shares_have_decimals": (share_quantity % 1) != 0,
                     # Add share quantity recommendation text with aligned investment amount
-                    "share_quantity_recommendation": self._generate_share_recommendation(share_quantity, share_price, is_net_investment, fee_calculation) if (share_quantity % 1) != 0 else f"{round(share_quantity):,} shares"
+                    "share_quantity_recommendation": self._generate_share_recommendation(share_quantity, share_price, is_net_investment, fee_calculation) if (share_quantity % 1) != 0 else f"{round(share_quantity):,} shares",
+                    "shares_override_aligned_amount": round(aligned_input_amount, 2) if aligned_input_amount is not None else None
                 })
                 
+                # Compute recommended input amount that yields rounded shares, for UI guidance
+                try:
+                    recommended_input_amount = None
+                    if (share_quantity % 1) != 0 and share_price:
+                        target_net_amount_for_rounded = round(share_quantity) * share_price
+                        calc_company_data_local2 = calc_company_data.copy() if 'calc_company_data' in locals() and isinstance(calc_company_data, dict) else {}
+                        inv_data_mod_local2 = inv_data_mod.copy() if 'inv_data_mod' in locals() and isinstance(inv_data_mod, dict) else {}
+                        recommended_input_amount = self._solve_amount_for_target_net(target_net_amount_for_rounded, is_net_investment, calc_company_data_local2, inv_data_mod_local2)
+                    if recommended_input_amount is not None:
+                        preview_data['recommended_input_amount'] = round(recommended_input_amount, 2)
+                        preview_data['share_quantity_recommendation'] = f"Recommended: {round(share_quantity):,} shares (set Investment Amount to £{recommended_input_amount:,.2f})"
+                except Exception:
+                    pass
+
                 # Render the template
                 rendered = template.render(
                     salutation=salutation,
@@ -1412,6 +1467,35 @@ class FeeLetterAgent(BaseAgent):
         except Exception:
             # Fallback if calculation fails
             return f"Recommended: {round(share_quantity):,} shares (rounded from {share_quantity:,.2f} for ease of allocation)"
+
+    def _solve_amount_for_target_net(self, target_net_amount: float, is_net_investment: bool, calc_company_data: Dict[str, Any], inv_data_mod: Dict[str, Any]) -> float:
+        """Find the input investment amount that results in a target net amount into the company.
+        Uses binary search over the investment amount and the FeeCalculator to converge.
+        """
+        try:
+            if not FeeCalculator:
+                return target_net_amount
+            # Establish bounds
+            low = max(0.01, target_net_amount * 0.5)
+            high = target_net_amount * 2.5
+            best_amt = target_net_amount
+            for _ in range(24):
+                mid = (low + high) / 2.0
+                calc = FeeCalculator.calc_breakdown(mid, is_net_investment, calc_company_data, inv_data_mod)
+                if not calc or not hasattr(calc, 'gross_investment'):
+                    break
+                net_into_company = calc.gross_investment
+                if abs(net_into_company - target_net_amount) <= 0.005:
+                    best_amt = mid
+                    break
+                if net_into_company < target_net_amount:
+                    low = mid
+                else:
+                    high = mid
+                best_amt = mid
+            return round(best_amt, 2)
+        except Exception:
+            return round(target_net_amount, 2)
     
     def send_fee_letter_email(self, to_email: str, company_name: str, email_content: str) -> bool:
         """
