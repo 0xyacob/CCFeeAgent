@@ -56,6 +56,19 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Small build banner to verify the running code instance
+try:
+    import subprocess, pathlib
+    git_sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=str(pathlib.Path(__file__).parent)).decode().strip()
+except Exception:
+    git_sha = "unknown"
+try:
+    from datetime import datetime as _dt
+    ts = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+except Exception:
+    ts = ""
+st.caption(f"Build: {git_sha} | File: {__file__} | {ts}")
 # Allow forcing a fresh login via URL param: ?reset=1
 try:
     params = st.experimental_get_query_params()
