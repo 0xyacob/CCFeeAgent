@@ -71,8 +71,9 @@ except Exception:
 st.caption(f"Build: {git_sha} | File: {__file__} | {ts}")
 # Allow forcing a fresh login via URL param: ?reset=1
 try:
-    params = st.experimental_get_query_params()
-    if params.get('reset') == ['1']:
+    qp = st.query_params
+    reset_val = qp.get('reset')
+    if reset_val == '1' or (isinstance(reset_val, list) and '1' in reset_val):
         for k in [
             'preauth_ok', 'authenticated', 'user_info',
             'team_primary_emails_input', 'team_cc_email_input',
@@ -80,7 +81,8 @@ try:
         ]:
             if k in st.session_state:
                 del st.session_state[k]
-        st.experimental_set_query_params()  # clear the param
+        if 'reset' in st.query_params:
+            del st.query_params['reset']
         st.rerun()
 except Exception:
     pass
