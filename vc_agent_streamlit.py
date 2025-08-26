@@ -56,6 +56,21 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# Allow forcing a fresh login via URL param: ?reset=1
+try:
+    params = st.experimental_get_query_params()
+    if params.get('reset') == ['1']:
+        for k in [
+            'preauth_ok', 'authenticated', 'user_info',
+            'team_primary_emails_input', 'team_cc_email_input',
+            'last_fee_preview'
+        ]:
+            if k in st.session_state:
+                del st.session_state[k]
+        st.experimental_set_query_params()  # clear the param
+        st.rerun()
+except Exception:
+    pass
 if 'preauth_ok' not in st.session_state:
     st.session_state.preauth_ok = False
 
@@ -99,6 +114,17 @@ if not st.session_state.preauth_ok:
         except Exception:
             pass
     st.stop()
+
+# If preauth appears set, validate we still have a valid token/user; otherwise, force sign-in again
+try:
+    if st.session_state.preauth_ok:
+        from microsoft_graph_auth_manager import get_auth_manager as _get_auth_mgr
+        ucheck = _get_auth_mgr().get_user_info() or {}
+        if not ucheck:
+            st.session_state.preauth_ok = False
+            st.rerun()
+except Exception:
+    pass
 
 # Password protection (runs only after preauth_ok)
 if 'authenticated' not in st.session_state:
